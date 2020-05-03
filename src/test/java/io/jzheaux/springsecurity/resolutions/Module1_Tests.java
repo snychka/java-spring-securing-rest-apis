@@ -262,6 +262,7 @@ public class Module1_Tests {
 	@Test
 	public void task_9() throws Exception {
 		// add User copy constructor
+		task_8();
 		Class<?> userClass = assertClass("Task 9", "io.jzheaux.springsecurity.resolutions.User");
 		Constructor<?> userCopyConstructor = getConstructor(userClass, userClass);
 		assertNotNull(
@@ -296,6 +297,46 @@ public class Module1_Tests {
 	@Test
 	public void task_10() throws Exception {
 		// add custom UserDetailsService
+		task_1();
+		assertUserStructure();
+		assertUserRepositoryStructure();
+		assertDatabaseContents();
+		assertUserAuthorityStructure();
+
+		Class<?> userDetailsManagerClass = assertClass("Task 10", "io.jzheaux.springsecurity.resolutions.UserRepositoryDetailsService");
+		assertTrue(
+				"Task 2: Couldn't find a `UserDetailsService` of type `io.jzheaux.springsecurity.resolutions.UserRepositoryDetailsService` in the application context. " +
+						"Make sure that you are exposing a `@Bean` of that type.",
+				this.context.getBeanNamesForType(userDetailsManagerClass).length > 0);
+
+		Class<?> userRepositoryClass = assertClass("Task 10", "io.jzheaux.springsecurity.resolutions.UserRepository");
+		Field userRepositoryField = getDeclaredFieldByType(userDetailsManagerClass, userRepositoryClass);
+		assertNotNull(
+				"Task 10: For this exercise make sure that your custom UserDetailsService implementation is delegating to " +
+						"a `UserRepository` instance",
+				userRepositoryField);
+
+		Class<?> userClass = assertClass("Task 10", "io.jzheaux.springsecurity.resolutions.User");
+		Class<?> userDetailsClass = assertClass("Task 10", "org.springframework.security.core.userdetails.UserDetails");
+		Object user = new SpringSecurityClasspathGuard(this.context).getUser("user");
+
+		assertTrue(
+				"Task 10: The object returned from a custom `UserDetailsService` should be castable to your custom " +
+						"`User` type.",
+				userClass.isAssignableFrom(user.getClass()));
+
+		assertTrue(
+				"Task 10: The object returned from a custom `UserDetailsService` must be castable to `UserDetails`",
+				userClass.isAssignableFrom(userDetailsClass.getClass()));
+
+		MvcResult result = this.mvc.perform(get("/resolutions")
+				.with(httpBasic("user", "password")))
+				.andReturn();
+
+		assertEquals(
+				"Task 10: The `/resolutions` response failed to authorize user/password as the username and password. " +
+						"Make sure that your custom `UserDetailsService` is wired with a password of `password`.",
+				result.getResponse().getStatus(), 200);
 	}
 
 	private Class<?> assertClass(String task, String className) throws Exception {
@@ -601,6 +642,10 @@ public class Module1_Tests {
 			return details.getAuthorities().stream()
 					.map(GrantedAuthority::getAuthority)
 					.collect(Collectors.toList());
+		}
+
+		Object getUser(String username) {
+			return this.service.loadUserByUsername(username);
 		}
 	}
 }
