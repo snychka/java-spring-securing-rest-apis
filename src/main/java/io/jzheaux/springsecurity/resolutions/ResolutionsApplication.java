@@ -9,19 +9,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 
 import javax.sql.DataSource;
-import java.util.List;
 
 @SpringBootApplication
 public class ResolutionsApplication {
 
 	@Bean
 	public UserDetailsService userDetailsService(DataSource dataSource) {
-		return new JdbcUserDetailsManager(dataSource) {
-			@Override
-			protected List<GrantedAuthority> loadUserAuthorities(String username) {
-				return AuthorityUtils.createAuthorityList("resolution:read");
-			}
-		};
+		return new JdbcUserDetailsManager(dataSource);
 	}
 
 	public static void main(String[] args) {
