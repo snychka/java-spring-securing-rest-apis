@@ -36,6 +36,14 @@ public class User implements Serializable {
 		this.password = password;
 	}
 
+	User(User user) {
+		this.id = user.id;
+		this.username = user.username;
+		this.password = user.password;
+		this.enabled = user.enabled;
+		this.userAuthorities = user.userAuthorities;
+	}
+
 	public UUID getId() {
 		return id;
 	}
