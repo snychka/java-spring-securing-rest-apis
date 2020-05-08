@@ -22,16 +22,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -39,9 +32,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -530,166 +523,5 @@ public class Module1_Tests {
 		}
 
 		return null;
-	}
-
-	private static class ReflectedUser {
-		static Constructor defaultConstructor;
-		static Constructor copyConstructor;
-		static Field usernameColumnField;
-		static Field passwordColumnField;
-		static Field enabledColumnField;
-		static Field userAuthorityCollectionField;
-		static Method grantAuthorityMethod;
-
-		static {
-			defaultConstructor = getConstructor(User.class);
-			if (defaultConstructor != null) defaultConstructor.setAccessible(true);
-			copyConstructor = getConstructor(User.class, User.class);
-			usernameColumnField = getDeclaredFieldByColumnName(User.class, "username");
-			if (usernameColumnField != null) usernameColumnField.setAccessible(true);
-			passwordColumnField = getDeclaredFieldByColumnName(User.class, "password");
-			if (passwordColumnField != null) passwordColumnField.setAccessible(true);
-			enabledColumnField = getDeclaredFieldByColumnName(User.class, "enabled");
-			if (enabledColumnField != null) enabledColumnField.setAccessible(true);
-			userAuthorityCollectionField = getDeclaredFieldHavingAnnotation(User.class, OneToMany.class);
-			if (userAuthorityCollectionField != null) userAuthorityCollectionField.setAccessible(true);
-			try {
-				grantAuthorityMethod = User.class.getDeclaredMethod("grantAuthority", String.class);
-			} catch (Exception ignored) {
-				// user hasn't added this method yet
-			}
-		}
-
-		User user;
-
-		public static ReflectedUser newInstance() {
-			try {
-				return new ReflectedUser((User) defaultConstructor.newInstance());
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
-
-		public static ReflectedUser copiedInstance(ReflectedUser user) {
-			try {
-				return new ReflectedUser((User) copyConstructor.newInstance(user.user));
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
-
-		public ReflectedUser(User user) {
-			this.user = user;
-		}
-
-		String getUsername() {
-			return getProperty(this.user, usernameColumnField);
-		}
-
-		String getPassword() {
-			return getProperty(this.user, passwordColumnField);
-		}
-
-		Collection<UserAuthority> getUserAuthorities() {
-			return getProperty(this.user, userAuthorityCollectionField);
-		}
-
-		void grantAuthority(String authority) {
-			try {
-				grantAuthorityMethod.invoke(this.user, authority);
-			} catch (Exception e) {
-				throw new RuntimeException("Failed to call `grantAuthority` on " + this.user, e);
-			}
-		}
-	}
-
-	private static class ReflectedUserAuthority {
-		static Field userField;
-		static Field usernameColumnField;
-		static Field authorityField;
-		static Field authorityColumnField;
-
-		static {
-			userField = getDeclaredFieldByType(UserAuthority.class, User.class);
-			if (userField != null) userField.setAccessible(true);
-			usernameColumnField = getDeclaredFieldByColumnName(UserAuthority.class, "username");
-			authorityField = getDeclaredFieldByName(UserAuthority.class, "authority");
-			authorityColumnField = getDeclaredFieldByColumnName(UserAuthority.class, "authority");
-			if (authorityColumnField != null) authorityColumnField.setAccessible(true);
-		}
-
-		UserAuthority userAuthority;
-
-		public ReflectedUserAuthority(UserAuthority userAuthority) {
-			this.userAuthority = userAuthority;
-		}
-
-		User getUser() {
-			return getProperty(this.userAuthority, userField);
-		}
-
-		String getAuthority() {
-			return getProperty(this.userAuthority, authorityColumnField);
-		}
-	}
-
-	static Field getDeclaredFieldByType(Class<?> type, Class<?> fieldType) {
-		return Stream.of(type.getDeclaredFields())
-				.filter(f -> f.getType() == fieldType)
-				.findFirst().orElse(null);
-	}
-
-	static Field getDeclaredFieldByName(Class<?> type, String name) {
-		return Stream.of(type.getDeclaredFields())
-				.filter(f -> f.getName().equals(name))
-				.findFirst().orElse(null);
-	}
-
-	static Field getDeclaredFieldByColumnName(Class<?> type, String columnName) {
-		return Stream.of(type.getDeclaredFields())
-				.filter(f -> {
-					String name = null;
-					Column column = f.getAnnotation(Column.class);
-					Id id = f.getAnnotation(Id.class);
-					JoinColumn joinColumn = f.getAnnotation(JoinColumn.class);
-
-					if (column != null) {
-						name = column.name();
-					} else if (joinColumn != null) {
-						name = joinColumn.name();
-					} else if (id != null) {
-						name = "";
-					}
-
-					if ("".equals(name)) {
-						name = f.getName();
-					}
-
-					return name.equals(columnName);
-				})
-				.findFirst().orElse(null);
-	}
-
-	static Field getDeclaredFieldHavingAnnotation(Class<?> type, Class<? extends Annotation> annotation) {
-		return Stream.of(type.getDeclaredFields())
-				.filter(f -> f.getAnnotation(annotation) != null)
-				.findFirst().orElse(null);
-	}
-
-	static Constructor<?> getConstructor(Class<?> type, Class<?>... parameterTypes) {
-		try {
-			return type.getDeclaredConstructor(parameterTypes);
-		} catch (Exception ignored) {
-			return null;
-		}
-	}
-
-	private static <T> T getProperty(Object o, Field field) {
-		try {
-			field.setAccessible(true);
-			return (T) field.get(o);
-		} catch (Exception e) {
-			throw new RuntimeException("Tried to get " + field + " from " + o, e);
-		}
 	}
 }
