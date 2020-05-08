@@ -1,9 +1,14 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.UUID;
 
 @Entity(name="users")
@@ -19,6 +24,9 @@ public class User implements Serializable {
 
 	@Column
 	boolean enabled = true;
+
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	Collection<UserAuthority> userAuthorities = new ArrayList<>();
 
 	User() {}
 
@@ -58,5 +66,13 @@ public class User implements Serializable {
 
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
+	}
+
+	public Collection<UserAuthority> getUserAuthorities() {
+		return userAuthorities;
+	}
+
+	public void grantAuthority(String authority) {
+		this.userAuthorities.add(new UserAuthority(this, authority));
 	}
 }
