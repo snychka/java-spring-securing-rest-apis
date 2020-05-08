@@ -8,41 +8,26 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.expression.Expression;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.SimpleEvaluationContext;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.expression.SecurityExpressionRoot;
 import org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor;
 import org.springframework.security.access.method.DelegatingMethodSecurityMetadataSource;
-import org.springframework.security.access.method.MethodSecurityMetadataSource;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PostFilter;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PrePostAnnotationSecurityMetadataSource;
 import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.util.ClassUtils;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -104,7 +89,7 @@ public class Module2_Tests {
 				delegating.getMethodSecurityMetadataSources().stream()
 						.anyMatch(PrePostAnnotationSecurityMetadataSource.class::isInstance));
 
-		Method readMethod = ResolutionController.class.getDeclaredMethod("read", User.class);
+		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
 		PreAuthorize readPreAuthorize = readMethod.getAnnotation(PreAuthorize.class);
 		assertNotNull(
 				"Task 1: Please add the `@PreAuthorize` annotation to the `ResolutionController#read` method.",
@@ -112,7 +97,7 @@ public class Module2_Tests {
 
 		try {
 			SecurityContextHolder.getContext().setAuthentication(this.hasread);
-			this.controller.read((User) this.hasread.getPrincipal());
+			this.controller.read();
 		} catch (AccessDeniedException e) {
 			fail("Task 1: Your `@PreAuthorize` annotation evaluated to `false` when it was " +
 					"given a user with a `READ` permission. Double check your expression; it " +
@@ -123,7 +108,7 @@ public class Module2_Tests {
 
 		try {
 			SecurityContextHolder.getContext().setAuthentication(this.haswrite);
-			this.controller.read((User) this.haswrite.getPrincipal());
+			this.controller.read();
 			fail("Task 1: Your `@PreAuthorize` annotation evaluated to `true` when it was " +
 					"given a user without a `READ` permission. Double check your expression; it " +
 					"should look something like `@PreAuthorize('READ')`");
@@ -163,7 +148,7 @@ public class Module2_Tests {
 		this.repository.save(new Resolution("has read test", hasReadUuid));
 		this.repository.save(new Resolution("has write test", hasWriteUuid));
 
-		Method readMethod = ResolutionController.class.getDeclaredMethod("read", User.class);
+		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
 		PostFilter readPostFilter = readMethod.getAnnotation(PostFilter.class);
 		assertNotNull(
 				"Task 2: Please add the `@PostFilter` annotation to the `read()` method.",
@@ -171,7 +156,7 @@ public class Module2_Tests {
 
 		SecurityContextHolder.getContext().setAuthentication(this.hasread);
 		try {
-			List<Resolution> resolutions = this.controller.read((User) this.hasread.getPrincipal());
+			List<Resolution> resolutions = this.controller.read();
 			assertFalse(
 					"Task 2: Calling `ResolutionController#read()` returned no results. " +
 							"Make sure that your filter is keeping records whose owner matches the logged in user.",
