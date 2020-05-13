@@ -23,14 +23,14 @@ public class ResolutionController {
 	}
 
 	@PreAuthorize("hasAuthority('resolution:read')")
-	@PostFilter("filterObject.owner == authentication.name")
+	@PostFilter("filterObject.owner == authentication.name || hasRole('ADMIN')")
 	@GetMapping("/resolutions")
 	public Iterable<Resolution> read() {
 		return this.resolutions.findAll();
 	}
 
 	@PreAuthorize("hasAuthority('resolution:read')")
-	@PostAuthorize("returnObject.orElse(null)?.owner == authentication.name")
+	@PostAuthorize("returnObject.orElse(null)?.owner == authentication.name || hasRole('ADMIN')")
 	@GetMapping("/resolution/{id}")
 	public Optional<Resolution> read(@PathVariable("id") UUID id) {
 		return this.resolutions.findById(id);
