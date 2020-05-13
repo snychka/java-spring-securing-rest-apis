@@ -10,7 +10,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -26,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -62,6 +67,9 @@ public class Module1_Tests {
 
 	@Autowired
 	ApplicationContext context;
+
+	@Autowired
+	ResolutionController resolutionController;
 
 	/**
 	 * Add the appropriate Spring Boot starter dependency
@@ -496,6 +504,32 @@ public class Module1_Tests {
 				result.getResponse().getStatus(), 200);
 	}
 
+	@Test
+	public void task_14() {
+		Authentication hasread = token("hasread");
+		Method make = method(ResolutionController.class, "make", UUID.class, String.class);
+		assertNotNull(
+				"Task 14: Please add the current logged-in user's `UUID` as a method parameter. " +
+						"You can do this by adding the appropriate `@AuthenticationPrincipal`. While technically any method parameter can " +
+						"contain user information, this test expects it to be the first parameter.",
+				make);
+		SecurityContextHolder.getContext().setAuthentication(hasread);
+		try {
+			ReflectedUser hasreadUser = new ReflectedUser((User) hasread.getPrincipal());
+			Resolution resolution =
+					(Resolution) make.invoke(this.resolutionController, hasreadUser.getId(), "my resolution");
+			assertEquals(
+					"Task 14: When making a resolution, the user attached to the resolution does not match the logged in user. " +
+							"Make sure you are passing the id of the currently logged-in user to `ResolutionRepository`",
+					resolution.getOwner(), hasreadUser.getId());
+		} catch (Exception e) {
+			fail(
+					"Task 14: `ResolutionController#make threw an exception: " + e);
+		} finally {
+			SecurityContextHolder.clearContext();
+		}
+	}
+
 	private enum UserDetailsServiceVerifier {
 		INMEMORY(InMemoryUserDetailsManager.class, Module1_Tests::assertInMemoryUserDetailsService),
 		JDBC(JdbcUserDetailsManager.class, Module1_Tests::assertJdbcUserDetailsService),
@@ -567,5 +601,19 @@ public class Module1_Tests {
 		}
 
 		return null;
+	}
+
+	Method method(Class<?> clazz, String method, Class<?>... params) {
+		try {
+			return clazz.getDeclaredMethod(method, params);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	Authentication token(String username) {
+		UserDetails details = this.userDetailsService.loadUserByUsername(username);
+		return new TestingAuthenticationToken(details, details.getPassword(),
+				new ArrayList<>(details.getAuthorities()));
 	}
 }
