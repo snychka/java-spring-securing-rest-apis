@@ -1,5 +1,6 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,7 @@ public class ResolutionController {
 	}
 
 	@PreAuthorize("hasAuthority('resolution:read')")
+	@PostAuthorize("returnObject.orElse(null)?.owner == authentication.name")
 	@GetMapping("/resolution/{id}")
 	public Optional<Resolution> read(@PathVariable("id") UUID id) {
 		return this.resolutions.findById(id);
