@@ -22,13 +22,12 @@ public class ResolutionController {
 	}
 
 	@GetMapping("/resolutions")
-	public List<Resolution> read() {
-		UUID owner = UUID.fromString("219168d2-1da4-4f8a-85d8-95b4377af3c1");
-		return this.resolutions.findByOwner(owner);
+	public Iterable<Resolution> read() {
+		return this.resolutions.findAll();
 	}
 
 	@GetMapping("/resolution/{id}")
-	public Optional<Resolution> read(UUID id) {
+	public Optional<Resolution> read(@PathVariable("id") UUID id) {
 		return this.resolutions.findById(id);
 	}
 

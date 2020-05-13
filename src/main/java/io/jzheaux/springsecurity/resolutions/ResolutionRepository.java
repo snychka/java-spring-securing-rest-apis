@@ -10,8 +10,6 @@ import java.util.UUID;
 
 @Repository
 public interface ResolutionRepository extends CrudRepository<Resolution, UUID> {
-	List<Resolution> findByOwner(UUID owner);
-
 	@Modifying
 	@Query("UPDATE Resolution SET text = :text WHERE id = :id")
 	void revise(UUID id, String text);
