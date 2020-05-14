@@ -153,12 +153,12 @@ public class Module1_Tests {
 		// create UserRepository
 		task_3(); // check that everything from Task 3 still holds
 		assertNotNull(
-				"Task 4: Make sure that your `UserRepository` is extending `CrudRepository<User,UUID>`",
-				this.users);
-
-		assertNotNull(
 				"Task 4: Make sure that your `UserRepository` is annotated with " + Repository.class,
 				UserRepository.class.getAnnotation(Repository.class));
+
+		assertNotNull(
+				"Task 4: Make sure that your `UserRepository` is extending `CrudRepository<User,UUID>`",
+				this.users);
 	}
 
 	@Test
