@@ -7,7 +7,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -28,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -40,6 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getConstructor;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -420,13 +421,29 @@ public class Module1_Tests {
 		// add custom UserDetailsService
 		task_1();
 
-		assertTrue(
-				"Task 11: The `UserDetailsService` bean is not of type `" + UserRepositoryUserDetailsService.class.getName() + "`. " +
-						"Please double-check the type you are returning for your `UserDetailsService` `@Bean`.",
-				this.userDetailsService instanceof UserRepositoryUserDetailsService);
+		UserDetailsService userDetailsService = null;
+		if (this.userDetailsService instanceof UserRepositoryUserDetailsService) {
+			userDetailsService = this.userDetailsService;
+		} else {
+			Constructor<?> defaultConstructor = getConstructor(UserRepositoryUserDetailsService.class);
+			if (defaultConstructor != null) {
+				userDetailsService = (UserDetailsService) defaultConstructor.newInstance();
+			} else {
+				Constructor<?> userRepositoryConstructor =
+						getConstructor(UserRepositoryUserDetailsService.class, UserRepository.class);
+				if (userRepositoryConstructor != null) {
+					userDetailsService = (UserDetailsService) userRepositoryConstructor.newInstance(this.users);
+				}
+			}
+		}
+
+		assertNotNull(
+				"Task 11: Could not construct an instance of type `UserRepositoryUserDetailsService`. " +
+						"Make sure that it either has a default constructor or one that takes as `UserRepository` instance",
+				userDetailsService);
 
 		try {
-			this.userDetailsService.loadUserByUsername(UUID.randomUUID().toString());
+			userDetailsService.loadUserByUsername(UUID.randomUUID().toString());
 			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user" );
 		} catch (UsernameNotFoundException expected) {
 			// ignoring
