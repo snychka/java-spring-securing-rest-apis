@@ -7,6 +7,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import static org.springframework.http.HttpMethod.GET;
 
@@ -27,6 +29,19 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 	@Bean
 	public UserDetailsService userDetailsService(UserRepository users) {
 		return new UserRepositoryUserDetailsService(users);
+	}
+
+	@Bean
+	public WebMvcConfigurer webMvcConfigurer() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+				registry.addMapping("/**")
+						.allowedOrigins("http://localhost:4000")
+						.allowedMethods("HEAD")
+						.allowedHeaders("Authorization");
+			}
+		};
 	}
 
 	public static void main(String[] args) {
