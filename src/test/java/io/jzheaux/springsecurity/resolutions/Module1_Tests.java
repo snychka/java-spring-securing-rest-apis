@@ -7,9 +7,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -61,6 +67,9 @@ public class Module1_Tests {
 
 	@Autowired
 	ApplicationContext context;
+
+	@Autowired
+	ResolutionController resolutionController;
 
 	/**
 	 * Add the appropriate Spring Boot starter dependency
@@ -411,35 +420,50 @@ public class Module1_Tests {
 		// add custom UserDetailsService
 		task_1();
 
-		String failureMessage = assertUserDetailsService(UserRepositoryUserDetailsService.class);
-		if (failureMessage != null) {
-			fail("Task 11: " + failureMessage);
-		}
+		assertTrue(
+				"Task 11: The `UserDetailsService` bean is not of type `" + UserRepositoryUserDetailsService.class.getName() + "`. " +
+						"Please double-check the type you are returning for your `UserDetailsService` `@Bean`.",
+				this.userDetailsService instanceof UserRepositoryUserDetailsService);
 
 		try {
 			this.userDetailsService.loadUserByUsername(UUID.randomUUID().toString());
-			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user");
+			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user" );
 		} catch (UsernameNotFoundException expected) {
 			// ignoring
 		} catch (Exception e) {
-			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user");
+			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user" );
 		}
+	}
+
+	@Test
+	public void task_12() throws Exception {
+		task_11();
 
 		Field userRepositoryField = getDeclaredFieldByType(UserRepositoryUserDetailsService.class, UserRepository.class);
 		assertNotNull(
-				"Task 11: For this exercise make sure that your custom UserDetailsService implementation is delegating to " +
+				"Task 12: For this exercise make sure that your custom `UserDetailsService` implementation is delegating to " +
 						"a `UserRepository` instance",
 				userRepositoryField);
+	}
+
+	@Test
+	public void task_13() throws Exception {
+		task_12();
+
+		String failureMessage = assertUserDetailsService(UserRepositoryUserDetailsService.class);
+		if (failureMessage != null) {
+			fail("Task 13: " + failureMessage);
+		}
 
 		UserDetails user = this.userDetailsService.loadUserByUsername("user");
 
 		assertTrue(
-				"Task 11: The object returned from a custom `UserDetailsService` should be castable to your custom " +
+				"Task 13: The object returned from a custom `UserDetailsService` should be castable to your custom " +
 						"`User` type.",
 				User.class.isAssignableFrom(user.getClass()));
 
 		assertTrue(
-				"Task 11: The object returned from a custom `UserDetailsService` must be castable to `UserDetails`",
+				"Task 13: The object returned from a custom `UserDetailsService` must be castable to `UserDetails`",
 				UserDetails.class.isAssignableFrom(user.getClass()));
 
 		MvcResult result = this.mvc.perform(get("/resolutions")
@@ -447,9 +471,63 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 11: The `/resolutions` response failed to authorize `user`/`password` as the username and password. " +
+				"Task 13: The `/resolutions` response failed to authorize `user`/`password` as the username and password. " +
 						"Make sure that your custom `UserDetailsService` is wired with a password of `password`.",
 				result.getResponse().getStatus(), 200);
+
+		result = this.mvc.perform(get("/resolutions")
+				.with(httpBasic("haswrite", "password")))
+				.andReturn();
+
+		assertEquals(
+				"Task 13: The `/resolutions` endpoint authorized `haswrite`/`password` even though it does not have the `READ` permission.",
+				result.getResponse().getStatus(), 403);
+
+		result = this.mvc.perform(post("/resolution")
+				.content("my resolution")
+				.with(csrf())
+				.with(httpBasic("hasread", "password")))
+				.andReturn();
+
+		assertEquals(
+				"Task 13: The `/resolution` `POST` endpoint authorized `hasread`/`password` even though `hasread` only has the `READ` permission.",
+				result.getResponse().getStatus(), 403);
+
+		result = this.mvc.perform(post("/resolution")
+				.content("my resolution")
+				.with(csrf())
+				.with(httpBasic("haswrite", "password")))
+				.andReturn();
+
+		assertEquals(
+				"Task 13: The `/resolution` `POST` response failed to authorize `haswrite`/`password` even though `haswrite` has the `WRITE` password.",
+				result.getResponse().getStatus(), 200);
+	}
+
+	@Test
+	public void task_14() {
+		Authentication hasread = token("hasread");
+		Method make = method(ResolutionController.class, "make", UUID.class, String.class);
+		assertNotNull(
+				"Task 14: Please add the current logged-in user's `UUID` as a method parameter. " +
+						"You can do this by adding the appropriate `@AuthenticationPrincipal`. While technically any method parameter can " +
+						"contain user information, this test expects it to be the first parameter.",
+				make);
+		SecurityContextHolder.getContext().setAuthentication(hasread);
+		try {
+			ReflectedUser hasreadUser = new ReflectedUser((User) hasread.getPrincipal());
+			Resolution resolution =
+					(Resolution) make.invoke(this.resolutionController, hasreadUser.getId(), "my resolution");
+			assertEquals(
+					"Task 14: When making a resolution, the user attached to the resolution does not match the logged in user. " +
+							"Make sure you are passing the id of the currently logged-in user to `ResolutionRepository`",
+					resolution.getOwner(), hasreadUser.getId());
+		} catch (Exception e) {
+			fail(
+					"Task 14: `ResolutionController#make threw an exception: " + e);
+		} finally {
+			SecurityContextHolder.clearContext();
+		}
 	}
 
 	private enum UserDetailsServiceVerifier {
@@ -523,5 +601,19 @@ public class Module1_Tests {
 		}
 
 		return null;
+	}
+
+	Method method(Class<?> clazz, String method, Class<?>... params) {
+		try {
+			return clazz.getDeclaredMethod(method, params);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	Authentication token(String username) {
+		UserDetails details = this.userDetailsService.loadUserByUsername(username);
+		return new TestingAuthenticationToken(details, details.getPassword(),
+				new ArrayList<>(details.getAuthorities()));
 	}
 }

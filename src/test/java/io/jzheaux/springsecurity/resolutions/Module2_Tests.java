@@ -7,9 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
 import org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor;
 import org.springframework.security.access.method.DelegatingMethodSecurityMetadataSource;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -18,24 +19,37 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PrePostAnnotationSecurityMetadataSource;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.sql.Ref;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
@@ -48,27 +62,38 @@ public class Module2_Tests {
 	MockMvc mvc;
 
 	@Autowired
-	ApplicationContext context;
-
-	@Autowired
 	ResolutionController controller;
 
 	@Autowired
 	ResolutionRepository repository;
 
-	@Autowired
+	@Autowired(required = false)
+	ResolutionAuthorizer authorizer;
+
+	@Autowired(required = false)
 	UserDetailsService userDetailsService;
+
+	@Autowired(required = false)
+	CrudRepository<User, UUID> users;
 
 	@Autowired(required = false)
 	MethodSecurityInterceptor methodSecurityInterceptor;
 
 	Authentication hasread;
 	Authentication haswrite;
+	Resolution hasreadResolution;
+	Resolution haswriteResolution;
 
 	@Before
 	public void setup() {
+		assertNotNull(this.userDetailsService);
+		assertNotNull(this.users);
 		this.hasread = token("hasread");
 		this.haswrite = token("haswrite");
+		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
+		UUID hasWriteUuid = new ReflectedUser((User) this.haswrite.getPrincipal()).getId();
+		this.hasreadResolution = this.repository.save(new Resolution("has read test", hasReadUuid));
+		this.haswriteResolution = this.repository.save(new Resolution("has write test", hasWriteUuid));
 	}
 
 	/**
@@ -88,34 +113,42 @@ public class Module2_Tests {
 						"by setting the `prePostEnabled` attribute to `true`",
 				delegating.getMethodSecurityMetadataSources().stream()
 						.anyMatch(PrePostAnnotationSecurityMetadataSource.class::isInstance));
+	}
+
+	private AccessDeniedException tryAuthorized(Runnable runnable, Authentication authentication) {
+		try {
+			SecurityContextHolder.getContext().setAuthentication(authentication);
+			runnable.run();
+			return null;
+		} catch (AccessDeniedException e) {
+			return e;
+		} finally {
+			SecurityContextHolder.clearContext();
+		}
+	}
+
+	@Test
+	public void task_2() throws Exception {
+		task_1();
 
 		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
 		PreAuthorize readPreAuthorize = readMethod.getAnnotation(PreAuthorize.class);
 		assertNotNull(
-				"Task 1: Please add the `@PreAuthorize` annotation to the `ResolutionController#read` method.",
+				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#read()` method.",
 				readPreAuthorize);
 
-		try {
-			SecurityContextHolder.getContext().setAuthentication(this.hasread);
-			this.controller.read();
-		} catch (AccessDeniedException e) {
-			fail("Task 1: Your `@PreAuthorize` annotation evaluated to `false` when it was " +
+		AccessDeniedException e = tryAuthorized(this.controller::read, this.hasread);
+		if (e != null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read()` evaluated to `false` when it was " +
 					"given a user with a `READ` permission. Double check your expression; it " +
-					"should look something like `@PreAuthorize('READ')`");
-		} finally {
-			SecurityContextHolder.clearContext();
+					"should look something like `@PreAuthorize(\"hasAuthority('READ')\")`");
 		}
 
-		try {
-			SecurityContextHolder.getContext().setAuthentication(this.haswrite);
-			this.controller.read();
-			fail("Task 1: Your `@PreAuthorize` annotation evaluated to `true` when it was " +
+		e = tryAuthorized(this.controller::read, this.haswrite);
+		if (e == null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read()` evaluated to `true` when it was " +
 					"given a user without a `READ` permission. Double check your expression; it " +
-					"should look something like `@PreAuthorize('READ')`");
-		} catch (AccessDeniedException expected) {
-			// ignore
-		} finally {
-			SecurityContextHolder.clearContext();
+					"should look something like `@PreAuthorize(\"hasAuthority('READ')\")`" );
 		}
 
 		MvcResult result = this.mvc.perform(get("/resolutions")
@@ -123,53 +156,98 @@ public class Module2_Tests {
 			.andReturn();
 
 		assertNotEquals(
-				"Task 1: The `/resolutions` endpoint failed to authenticate with `hasread`/`password`. " +
+				"Task 2: The `/resolutions` endpoint failed to authenticate with `hasread`/`password`. " +
 						"Make sure this username/password is added via your `UserRepository` on startup.",
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 1: The `/resolutions` endpoint failed to authorize `hasread`/`password`. " +
+				"Task 2: The `/resolutions` endpoint failed to authorize `hasread`/`password`. " +
 						"Make sure this username/password is granted the `READ` authority",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
-				"Task 1: The `/resolutions` endpoint failed with a status code of " +
+				"Task 2: The `/resolutions` endpoint failed with a status code of " +
 						result.getResponse().getStatus(),
 				200, result.getResponse().getStatus());
-	}
 
-	@Test
-	public void task_2() throws Exception {
-		// use post filter
-		task_1();
-		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
-		UUID hasWriteUuid = new ReflectedUser((User) this.haswrite.getPrincipal()).getId();
-
-		this.repository.save(new Resolution("has read test", hasReadUuid));
-		this.repository.save(new Resolution("has write test", hasWriteUuid));
-
-		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
-		PostFilter readPostFilter = readMethod.getAnnotation(PostFilter.class);
+		Method makeMethod = ResolutionController.class.getDeclaredMethod("make", UUID.class, String.class);
+		PreAuthorize makePreAuthorize = makeMethod.getAnnotation(PreAuthorize.class);
 		assertNotNull(
-				"Task 2: Please add the `@PostFilter` annotation to the `read()` method.",
-				readPostFilter);
+				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#make` method.",
+				makePreAuthorize);
 
-		SecurityContextHolder.getContext().setAuthentication(this.hasread);
-		try {
-			List<Resolution> resolutions = this.controller.read();
-			assertFalse(
-					"Task 2: Calling `ResolutionController#read()` returned no results. " +
-							"Make sure that your filter is keeping records whose owner matches the logged in user.",
-					resolutions.isEmpty());
-			for (Resolution resolution : resolutions) {
-				assertEquals(
-						"Task 2: One of the resolutions returned from RepositoryController#read() " +
-								"did not belong to the logged-in user. Make sure that your `@PostFilter` " +
-								"annotation is checking that the resolution's owner id matches the logged in user's id.",
-						hasReadUuid, resolution.getOwner());
-			}
-		} finally {
-			SecurityContextHolder.clearContext();
+		e = tryAuthorized(() -> make("resolution", this.haswrite), this.haswrite);
+		if (e != null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#make` evaluated to `false` when it was " +
+					"given a user with a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+		}
+
+		e = tryAuthorized(() -> make("resolution", this.hasread), this.hasread);
+		if (e == null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#make` evaluated to `true` when it was " +
+					"given a user without a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
+		}
+
+		readMethod = ResolutionController.class.getDeclaredMethod("read", UUID.class);
+		readPreAuthorize = readMethod.getAnnotation(PreAuthorize.class);
+		assertNotNull(
+				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#read(UUID)` method.",
+				readPreAuthorize);
+
+		e = tryAuthorized(() -> this.controller.read(this.hasreadResolution.getId()), this.hasread);
+		if (e != null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read(UUID)` evaluated to `false` when it was " +
+					"given a user with a `READ` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('READ')\")`");
+		}
+
+		e = tryAuthorized(() -> this.controller.read(this.haswriteResolution.getId()), this.haswrite);
+		if (e == null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read(UUID)` evaluated to `true` when it was " +
+					"given a user without a `READ` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('READ')\")`" );
+		}
+
+		Method reviseMethod = ResolutionController.class.getDeclaredMethod("revise", UUID.class, String.class);
+		PreAuthorize revisePreAuthorize = reviseMethod.getAnnotation(PreAuthorize.class);
+		assertNotNull(
+				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#revise(UUID, String)` method.",
+				revisePreAuthorize);
+
+		e = tryAuthorized(() -> this.controller.revise(this.haswriteResolution.getId(), "new text"), this.haswrite);
+		if (e != null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#revise(UUID, String)` evaluated to `false` when it was " +
+					"given a user with a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+		}
+
+		e = tryAuthorized(() -> this.controller.revise(this.hasreadResolution.getId(), "new text"), this.hasread);
+		if (e == null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#revise(UUID, String)` evaluated to `true` when it was " +
+					"given a user without a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
+		}
+
+		Method completeMethod = ResolutionController.class.getDeclaredMethod("complete", UUID.class);
+		PreAuthorize completePreAuthorize = completeMethod.getAnnotation(PreAuthorize.class);
+		assertNotNull(
+				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#complete(UUID, String)` method.",
+				completePreAuthorize);
+
+		e = tryAuthorized(() -> this.controller.complete(this.haswriteResolution.getId()), this.haswrite);
+		if (e != null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#complete(UUID, String)` evaluated to `false` when it was " +
+					"given a user with a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+		}
+
+		e = tryAuthorized(() -> this.controller.complete(this.hasreadResolution.getId()), this.hasread);
+		if (e == null) {
+			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#complete(UUID, String)` evaluated to `true` when it was " +
+					"given a user without a `WRITE` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
 		}
 	}
 
@@ -183,90 +261,65 @@ public class Module2_Tests {
 				"Task 3: Please add the `@PostAuthorize` annotation to the `ResolutionController#read(UUID)` method.",
 				readPostAuthorize);
 
-		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
-		UUID hasWriteUuid = new ReflectedUser((User) this.haswrite.getPrincipal()).getId();
-		Resolution hasReadResolution = this.repository.findByOwner(hasReadUuid).iterator().next();
-		Resolution hasWriteResolution = this.repository.findByOwner(hasWriteUuid).iterator().next();
-
-		SecurityContextHolder.getContext().setAuthentication(this.hasread);
-		try {
-			this.controller.read(hasReadResolution.getId());
-		} catch (AccessDeniedException e) {
+		AccessDeniedException e = tryAuthorized(() -> this.controller.read(this.hasreadResolution.getId()), this.hasread);
+		if (e != null) {
 			fail("Task 3: The `/resolution/{id}` endpoint failed to authorize the `hasread` user to read a resolution " +
 					"that belonged to them. Please double-check your `@PostAuthorize` expression.");
-		} finally {
-			SecurityContextHolder.clearContext();
 		}
 
-		SecurityContextHolder.getContext().setAuthentication(this.hasread);
-		try {
-			this.controller.read(hasWriteResolution.getId());
+		e = tryAuthorized(() -> this.controller.read(this.haswriteResolution.getId()), this.hasread);
+		if (e == null) {
 			fail("Task 3: The `/resolution/{id}` endpoint authorized the `hasread` user to read a resolution " +
 					"that didn't belonged to them. Please double-check your `@PostAuthorize` expression.");
-		} catch (AccessDeniedException expected) {
-			// ignore
-		} finally {
-			SecurityContextHolder.clearContext();
 		}
 
-		MvcResult result = this.mvc.perform(get("/resolution/" + hasReadResolution.getId())
+		MvcResult result = this.mvc.perform(get("/resolution/" + this.hasreadResolution.getId())
 				.with(httpBasic("hasread", "password")))
 				.andReturn();
 
 		assertNotEquals(
-				"Task 1: The `/resolution/{id}` endpoint failed to authenticate with `hasread`/`password`. " +
+				"Task 3: The `/resolution/{id}` endpoint failed to authenticate with `hasread`/`password`. " +
 						"Make sure this username/password is added via your `UserRepository` on startup.",
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 1: The `/resolution/{id}` endpoint failed to authorize `hasread`/`password`. " +
+				"Task 3: The `/resolution/{id}` endpoint failed to authorize `hasread`/`password`. " +
 						"Make sure this username/password is granted the `READ` authority.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
-				"Task 1: The `/resolution/{id}` endpoint failed with a status code of " +
+				"Task 3: The `/resolution/{id}` endpoint failed with a status code of " +
 						result.getResponse().getStatus(),
 				200, result.getResponse().getStatus());
 	}
 
+
 	@Test
 	public void task_4() throws Exception {
+		// use post filter
 		task_3();
-
-		Method reviseMethod = ResolutionRepository.class.getDeclaredMethod("revise", UUID.class, String.class);
-		Query reviseQuery = reviseMethod.getAnnotation(Query.class);
-		assertNotNull(
-				"Task 4: Please restore the `@Query` annotation to the `ResolutionRepository#revise(UUID, String)` method.",
-				reviseQuery);
-
-		assertTrue(
-				"Task 4: Use the `?#{principal.id}` expression to change the query and ensure that no update is performed unless the " +
-						"resolution belongs to the logged-in user.",
-				reviseQuery.value().contains("?#{principal"));
-
-
 		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
-		UUID hasWriteUuid = new ReflectedUser((User) this.haswrite.getPrincipal()).getId();
-		Resolution hasReadResolution = this.repository.findByOwner(hasReadUuid).iterator().next();
-		Resolution hasWriteResolution = this.repository.findByOwner(hasWriteUuid).iterator().next();
 
-		SecurityContextHolder.getContext().setAuthentication(this.haswrite);
-		try {
-			this.controller.revise(hasWriteResolution.getId(), hasWriteResolution.getText() + " (revised)");
-		} catch (AccessDeniedException e) {
-			fail("Task 4: The `/resolution/{id}` PUT endpoint failed to authorize the `haswrite` user to read a resolution " +
-					"that belonged to them. Please double-check your `@Query` expression.");
-		} finally {
-			SecurityContextHolder.clearContext();
-		}
+		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
+		PostFilter readPostFilter = readMethod.getAnnotation(PostFilter.class);
+		assertNotNull(
+				"Task 4: Please add the `@PostFilter` annotation to the `read()` method.",
+				readPostFilter);
 
-		SecurityContextHolder.getContext().setAuthentication(this.haswrite);
+		SecurityContextHolder.getContext().setAuthentication(this.hasread);
 		try {
-			this.controller.revise(hasReadResolution.getId(), hasReadResolution.getText() + " (revised)");
-			fail("Task 4: The `/resolution/{id}` endpoint authorized the `hasread` user to read a resolution " +
-					"that didn't belonged to them. Please double-check your `@PostAuthorize` expression.");
-		} catch (AccessDeniedException expected) {
-			// ignore
+			Iterable<Resolution> resolutions = this.controller.read();
+			assertTrue(
+					"Task 4: Calling `ResolutionController#read()` returned no results. " +
+							"Make sure that your filter is keeping records whose owner matches the logged in user.",
+					resolutions.iterator().hasNext());
+			for (Resolution resolution : resolutions) {
+				assertEquals(
+						"Task 4: One of the resolutions returned from RepositoryController#read() " +
+								"did not belong to the logged-in user. Make sure that your `@PostFilter` " +
+								"annotation is checking that the resolution's owner id matches the logged in user's id.",
+						hasReadUuid, resolution.getOwner());
+			}
 		} finally {
 			SecurityContextHolder.clearContext();
 		}
@@ -274,12 +327,293 @@ public class Module2_Tests {
 
 	@Test
 	public void task_5() throws Exception {
-		// add custom authorization expression
+		task_4();
+
+		Method reviseMethod = ResolutionController.class.getDeclaredMethod("revise", UUID.class, String.class);
+		PostAuthorize revisePostAuthorize = reviseMethod.getAnnotation(PostAuthorize.class);
+		assertNotNull(
+				"Task 5: Please add the `@PostAuthorize` annotation to the `ResolutionController#revise` method",
+				revisePostAuthorize);
+
+		reviseMethod = ResolutionRepository.class.getDeclaredMethod("revise", UUID.class, String.class);
+		Query reviseQuery = reviseMethod.getAnnotation(Query.class);
+		assertNotNull(
+				"Task 5: Please restore the `@Query` annotation to the `ResolutionRepository#revise(UUID, String)` method",
+				reviseQuery);
+
+		assertTrue(
+				"Task 5: Use the `?#{principal.id}` expression to change the query and ensure that no update is performed unless the " +
+						"resolution belongs to the logged-in user",
+				reviseQuery.value().contains("?#{principal"));
+
+		AccessDeniedException e = tryAuthorized(
+				() -> this.controller.revise(this.haswriteResolution.getId(), "has write test revised"), this.haswrite);
+		if (e != null) {
+			fail("Task 5: The `/resolution/{id}/revise` endpoint failed to authorize the `haswrite` user to revise a resolution " +
+					"that belonged to them. Please double-check your `@PostAuthorize` expression");
+		} else {
+			assertTrue(
+					"Task 5: The `/resolution/{id}/revise` endpoint failed to revise a resolution that belonged to `haswrite`. " +
+							"Please double-check your `@Query` expression",
+					this.repository.findById(this.haswriteResolution.getId())
+							.filter(resolution -> resolution.getText().equals("has write test revised"))
+							.isPresent());
+		}
+
+		e = tryAuthorized(
+				() -> this.controller.revise(this.hasreadResolution.getId(), "has read test revised"), this.haswrite);
+		if (e == null) {
+			fail("Task 5: The `/resolution/{id}/revise` endpoint authorized the `haswrite` user to revise a resolution " +
+					"that didn't belonged to them. Please double-check your `@PostAuthorize` expression" );
+		} else {
+			assertFalse(
+					"Task 5: The `/resolution/{id}/revise` endpoint allowed `haswrite` to revise a resolution that didn't belong to them. " +
+							"Please double-check your `@Query` expression",
+					this.repository.findById(this.hasreadResolution.getId())
+							.filter(resolution -> resolution.getText().equals("has read test revised"))
+							.isPresent());
+		}
+
+		Method completeMethod = ResolutionController.class.getDeclaredMethod("complete", UUID.class);
+		PostAuthorize completePostAuthorize = completeMethod.getAnnotation(PostAuthorize.class);
+		assertNotNull(
+				"Task 5: Please add the `@PostAuthorize` annotation to the `ResolutionController#revise` method",
+				completePostAuthorize);
+
+		completeMethod = ResolutionRepository.class.getDeclaredMethod("complete", UUID.class);
+		Query completeQuery = completeMethod.getAnnotation(Query.class);
+		assertNotNull(
+				"Task 5: Please restore the `@Query` annotation to the `ResolutionRepository#revise(UUID, String)` method",
+				completeQuery);
+
+		assertTrue(
+				"Task 5: Use the `?#{principal.id}` expression to change the query and ensure that no update is performed unless the " +
+						"resolution belongs to the logged-in user",
+				completeQuery.value().contains("?#{principal"));
+
+		e = tryAuthorized(
+				() -> this.controller.complete(this.haswriteResolution.getId()), this.haswrite);
+		if (e != null) {
+			fail("Task 5: The `/resolution/{id}/complete` endpoint failed to authorize the `haswrite` user to revise a resolution " +
+					"that belonged to them. Please double-check your `@PostAuthorize` expression");
+		} else {
+			assertTrue(
+					"Task 5: The `/resolution/{id}/complete` endpoint failed to revise a resolution that belonged to `haswrite`. " +
+							"Please double-check your `@Query` expression",
+					this.repository.findById(this.haswriteResolution.getId())
+							.filter(Resolution::getCompleted)
+							.isPresent());
+		}
+
+		e = tryAuthorized(
+				() -> this.controller.complete(this.hasreadResolution.getId()), this.haswrite);
+		if (e == null) {
+			fail("Task 5: The `/resolution/{id}/complete` endpoint authorized the `haswrite` user to revise a resolution " +
+					"that didn't belonged to them. Please double-check your `@PostAuthorize` expression" );
+		} else {
+			assertFalse(
+					"Task 5: The `/resolution/{id}/complete` endpoint allowed `haswrite` to revise a resolution that didn't belong to them. " +
+							"Please double-check your `@Query` expression",
+					this.repository.findById(this.hasreadResolution.getId())
+							.filter(Resolution::getCompleted)
+							.isPresent());
+		}
 	}
 
 	@Test
 	public void task_6() throws Exception {
+		task_5();
+
+		// add custom authorization expression
+		try {
+			this.userDetailsService.loadUserByUsername("admin");
+		} catch (UsernameNotFoundException e) {
+			fail("Task 6: No admin user was found. Please double-check that you are adding a user with username `admin` and password `password` to the database");
+		}
+
+		Authentication admin = token("admin");
+		AccessDeniedException e = tryAuthorized(() -> {
+			List<String> resolutions = StreamSupport.stream(this.controller.read().spliterator(), false)
+					.map(Resolution::getText).collect(Collectors.toList());
+			List<String> all = StreamSupport.stream(this.repository.findAll().spliterator(), false)
+					.map(Resolution::getText).collect(Collectors.toList());
+			assertEquals(
+					"Task 6: The admin user should receive all records back. Please double-check your `@PostFilter` expression that it allows all records if the user has the `ROLE_ADMIN` authority",
+					resolutions, all);
+		}, admin);
+
+		assertNull(
+				"Task 6: The `/resolutions` endpoint denied the admin user. Make sure that the admin is granted the `READ` authority.",
+				e);
+
+
+		e = tryAuthorized(() -> this.controller.read(this.haswriteResolution.getId()), admin);
+		assertNull(
+				"Task 6: The `/resolutions/{id}` GET endpoint failed to authorize the admin user to read a record that doesn't belong to them. " +
+						"Please make sure that the admin has the `READ` permission and please check your `@PostAuthorize` expression for `ResolutionController#read(UUID)`",
+				e);
+	}
+
+	@Test
+	public void task_7() throws Exception {
 		// add custom authorization rule
+		task_6();
+
+		assertNotNull(
+				"Task 7: Make sure to add the `ResolutionAuthorizer` to the application context. " +
+						"One way to do this is by adding the `@Component` annotation",
+				this.authorizer);
+
+		Authentication admin = token("admin");
+
+		Method authorize = method(ResolutionAuthorizer.class, "authorize", MethodSecurityExpressionOperations.class);
+		assertNotNull(
+				"Task 7: Please add an `authorize` method to `ResolutionAuthorizer` that takes a `MethodSecurityExpressionOperations` as a parameter.",
+				authorize);
+
+		MethodSecurityExpressionOperations operations = mock(MethodSecurityExpressionOperations.class);
+		when(operations.hasRole("ADMIN")).thenReturn(true);
+		when(operations.getAuthentication()).thenReturn(admin);
+		when(operations.getReturnObject()).thenReturn(Optional.of(this.hasreadResolution));
+
+		try {
+			assertTrue(
+					"Task 7: `ResolutionAuthorizer#authorize` refused to authorize the admin user. Please double-check its logic",
+					(boolean) authorize.invoke(this.authorizer, operations));
+		} catch (Exception e) {
+			fail("Task 7: `ResolutionAuthorizer#authorize` threw an exception: " + e);
+		}
+
+		reset(operations);
+		when(operations.hasRole("ADMIN")).thenReturn(false);
+		when(operations.getAuthentication()).thenReturn(this.hasread);
+		when(operations.getReturnObject()).thenReturn(Optional.of(this.haswriteResolution));
+
+		try {
+			assertFalse(
+					"Task 7: `ResolutionAuthorizer#authorize` authorized `hasread` to read a resolution owned by `haswrite`. Please double-check its logic",
+					(boolean) authorize.invoke(this.authorizer, operations));
+		} catch (Exception e) {
+			fail("Task 7: `ResolutionAuthorizer#authorize` threw an exception: " + e);
+		}
+
+		PostAuthorize readPostAuthorize = annotation(PostAuthorize.class, "read", UUID.class);
+		assertTrue(
+				"Task 7: Make sure that you are passing `#root` into the authorizer's `authorize` method",
+				readPostAuthorize.value().contains("#root"));
+
+		Method filter = method(ResolutionAuthorizer.class, "filter", MethodSecurityExpressionOperations.class);
+		assertNotNull(
+				"Task 7: Please add an `filter` method to `ResolutionAuthorizer` that takes a `MethodSecurityExpressionOperations` as a parameter.",
+				filter);
+
+		reset(operations);
+		when(operations.hasRole("ADMIN")).thenReturn(true);
+		when(operations.getAuthentication()).thenReturn(admin);
+		when(operations.getFilterObject()).thenReturn(this.hasreadResolution);
+
+		try {
+			assertTrue(
+					"Task 7: `ResolutionAuthorizer#filter` refused to authorize the admin user. Please double-check its logic",
+					(boolean) filter.invoke(this.authorizer, operations));
+		} catch (Exception e) {
+			fail("Task 7: `ResolutionAuthorizer#filter` threw an exception: " + e);
+		}
+
+		reset(operations);
+		when(operations.hasRole("ADMIN")).thenReturn(false);
+		when(operations.getAuthentication()).thenReturn(this.hasread);
+		when(operations.getFilterObject()).thenReturn(this.haswriteResolution);
+
+		try {
+			assertFalse(
+					"Task 7: `ResolutionAuthorizer#filter` authorized `hasread` to read a resolution owned by `haswrite`. Please double-check its logic",
+					(boolean) filter.invoke(this.authorizer, operations));
+		} catch (Exception e) {
+			fail("Task 7: `ResolutionAuthorizer#filter` threw an exception: " + e);
+		}
+
+		PostFilter readPostFilter = annotation(PostFilter.class, "read");
+		assertTrue(
+				"Task 7: Make sure that you are passing `#root` into the authorizer's `authorize` method",
+				readPostFilter.value().contains("#root"));
+
+		MvcResult result = this.mvc.perform(get("/resolutions")
+				.with(httpBasic("admin", "password")))
+				.andReturn();
+
+		assertEquals(
+				"Task 7: The `/resolutions` endpoint did not allow the admin user, returning the response code of " +
+						result.getResponse().getStatus(),
+				200, result.getResponse().getStatus());
+	}
+
+	@Test
+	public void task_8() throws Exception {
+		task_7();
+
+		UserDetails admin = this.userDetailsService.loadUserByUsername("admin");
+		List<String> grantedAuthorities = admin.getAuthorities().stream()
+				.map(GrantedAuthority::getAuthority).collect(Collectors.toList());
+		Optional<User> user = this.users.findById(new ReflectedUser((User) admin).getId());
+		List<String> userAuthorities = user
+				.map(ReflectedUser::new)
+				.map(ReflectedUser::getUserAuthorities)
+				.orElse(Collections.emptyList()).stream()
+				.map(ReflectedUserAuthority::new)
+				.map(ReflectedUserAuthority::getAuthority)
+				.collect(Collectors.toList());
+
+		assertFalse(
+				"Task 8: Please remove the `READ` and `WRITE` authority from the admin user in the database. " +
+						"Add them via your `UserRepositoryUserDetailsService` instead",
+				userAuthorities.contains("READ") || userAuthorities.contains("WRITE"));
+		assertTrue(
+				"Task 8: Please make sure the admin still has the `ROLE_ADMIN` authority in the database",
+				userAuthorities.contains("ROLE_ADMIN"));
+
+		assertTrue(
+				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `READ` authority",
+				grantedAuthorities.contains("READ"));
+
+		assertTrue(
+				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `WRITE` authority",
+				grantedAuthorities.contains("WRITE"));
+
+		assertTrue(
+				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `ROLE_ADMIN` authority",
+				grantedAuthorities.contains("ROLE_ADMIN"));
+	}
+
+	Resolution make(String text, Authentication token) {
+		try {
+			ReflectedUser user = new ReflectedUser((User) token.getPrincipal());
+			Method make = method(ResolutionController.class, "make", UUID.class, String.class);
+			return (Resolution) make.invoke(this.controller, user.getId(), text);
+		} catch (Exception e) {
+			if (e instanceof InvocationTargetException && e.getCause() instanceof RuntimeException) {
+				throw (RuntimeException) e.getCause();
+			}
+			fail("`ResolutionController#make` is missing the `UUID` method parameter. Was this module done before the first module?");
+			throw new RuntimeException(e);
+		}
+	}
+
+	Method method(Class<?> clazz, String method, Class<?>... params) {
+		try {
+			return clazz.getDeclaredMethod(method, params);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	<T extends Annotation> T annotation(Class<T> annotation, String method, Class<?>... params) {
+		try {
+			Method m = ResolutionController.class.getDeclaredMethod(method, params);
+			return m.getAnnotation(annotation);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	Authentication token(String username) {
