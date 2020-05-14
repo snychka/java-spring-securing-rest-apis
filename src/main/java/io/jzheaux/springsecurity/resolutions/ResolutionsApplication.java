@@ -7,9 +7,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
-
-import javax.sql.DataSource;
 
 import static org.springframework.http.HttpMethod.GET;
 
@@ -23,7 +20,8 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 			.authorizeRequests(authz -> authz
 				.mvcMatchers(GET, "/resolutions", "/resolution/**").hasAuthority("resolution:read")
 				.anyRequest().hasAuthority("resolution:write"))
-			.httpBasic(basic -> {});
+			.httpBasic(basic -> {})
+			.cors(cors -> {});
 	}
 
 	@Bean
