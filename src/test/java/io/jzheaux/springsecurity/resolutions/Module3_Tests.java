@@ -74,6 +74,10 @@ public class Module3_Tests {
 
         CorsConfiguration configuration = this.cors.getCorsConfiguration
                 (new MockHttpServletRequest("GET", "/" + UUID.randomUUID()));
+
+        assertNotNull(
+                "Task 3: Make sure that you've added a mapping for all endpoints by calling `addMapping(\"/**\")`'",
+                configuration);
         assertEquals(
                 "Task 3: Make sure that globally you are only allowing `HEAD`",
                 1, configuration.getAllowedMethods().size());
