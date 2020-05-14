@@ -23,7 +23,7 @@ public class ResolutionController {
 		this.resolutions = resolutions;
 	}
 
-	@CrossOrigin
+	@CrossOrigin(allowCredentials = "true")
 	@PreAuthorize("hasAuthority('resolution:read')")
 	@PostFilter("@post.filter(#root)")
 	@GetMapping("/resolutions")
