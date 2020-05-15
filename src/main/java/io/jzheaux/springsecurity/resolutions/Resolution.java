@@ -14,7 +14,7 @@ public class Resolution {
 	private String text;
 
 	@Column
-	private UUID owner;
+	private String owner;
 
 	@Column(nullable=false)
 	private Boolean completed = false;
@@ -22,7 +22,7 @@ public class Resolution {
 	public Resolution() {
 	}
 
-	public Resolution(String text, UUID owner) {
+	public Resolution(String text, String owner) {
 		this.id = UUID.randomUUID();
 		this.text = text;
 		this.owner = owner;
@@ -44,11 +44,11 @@ public class Resolution {
 		this.text = text;
 	}
 
-	public UUID getOwner() {
+	public String getOwner() {
 		return owner;
 	}
 
-	public void setOwner(UUID owner) {
+	public void setOwner(String owner) {
 		this.owner = owner;
 	}
 

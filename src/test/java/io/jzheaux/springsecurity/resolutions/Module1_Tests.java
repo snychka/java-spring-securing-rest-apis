@@ -524,7 +524,7 @@ public class Module1_Tests {
 	@Test
 	public void task_14() {
 		Authentication hasread = token("hasread");
-		Method make = method(ResolutionController.class, "make", UUID.class, String.class);
+		Method make = method(ResolutionController.class, "make", String.class, String.class);
 		assertNotNull(
 				"Task 14: Please add the current logged-in user's `UUID` as a method parameter. " +
 						"You can do this by adding the appropriate `@AuthenticationPrincipal`. While technically any method parameter can " +
@@ -534,11 +534,11 @@ public class Module1_Tests {
 		try {
 			ReflectedUser hasreadUser = new ReflectedUser((User) hasread.getPrincipal());
 			Resolution resolution =
-					(Resolution) make.invoke(this.resolutionController, hasreadUser.getId(), "my resolution");
+					(Resolution) make.invoke(this.resolutionController, hasreadUser.getUsername(), "my resolution");
 			assertEquals(
 					"Task 14: When making a resolution, the user attached to the resolution does not match the logged in user. " +
 							"Make sure you are passing the id of the currently logged-in user to `ResolutionRepository`",
-					resolution.getOwner(), hasreadUser.getId());
+					resolution.getOwner(), hasreadUser.getUsername());
 		} catch (Exception e) {
 			fail(
 					"Task 14: `ResolutionController#make threw an exception: " + e);

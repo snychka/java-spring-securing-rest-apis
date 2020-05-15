@@ -90,10 +90,8 @@ public class Module2_Tests {
 		assertNotNull(this.users);
 		this.hasread = token("hasread");
 		this.haswrite = token("haswrite");
-		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
-		UUID hasWriteUuid = new ReflectedUser((User) this.haswrite.getPrincipal()).getId();
-		this.hasreadResolution = this.repository.save(new Resolution("has read test", hasReadUuid));
-		this.haswriteResolution = this.repository.save(new Resolution("has write test", hasWriteUuid));
+		this.hasreadResolution = this.repository.save(new Resolution("has read test", "hasread"));
+		this.haswriteResolution = this.repository.save(new Resolution("has write test", "haswrite"));
 	}
 
 	/**
@@ -170,7 +168,7 @@ public class Module2_Tests {
 						result.getResponse().getStatus(),
 				200, result.getResponse().getStatus());
 
-		Method makeMethod = ResolutionController.class.getDeclaredMethod("make", UUID.class, String.class);
+		Method makeMethod = ResolutionController.class.getDeclaredMethod("make", String.class, String.class);
 		PreAuthorize makePreAuthorize = makeMethod.getAnnotation(PreAuthorize.class);
 		assertNotNull(
 				"Task 2: Please add the `@PreAuthorize` annotation to the `ResolutionController#make` method.",
@@ -298,7 +296,6 @@ public class Module2_Tests {
 	public void task_4() throws Exception {
 		// use post filter
 		task_3();
-		UUID hasReadUuid = new ReflectedUser((User) this.hasread.getPrincipal()).getId();
 
 		Method readMethod = ResolutionController.class.getDeclaredMethod("read");
 		PostFilter readPostFilter = readMethod.getAnnotation(PostFilter.class);
@@ -318,7 +315,7 @@ public class Module2_Tests {
 						"Task 4: One of the resolutions returned from RepositoryController#read() " +
 								"did not belong to the logged-in user. Make sure that your `@PostFilter` " +
 								"annotation is checking that the resolution's owner id matches the logged in user's id.",
-						hasReadUuid, resolution.getOwner());
+						"hasread", resolution.getOwner());
 			}
 		} finally {
 			SecurityContextHolder.clearContext();
@@ -588,13 +585,13 @@ public class Module2_Tests {
 	Resolution make(String text, Authentication token) {
 		try {
 			ReflectedUser user = new ReflectedUser((User) token.getPrincipal());
-			Method make = method(ResolutionController.class, "make", UUID.class, String.class);
-			return (Resolution) make.invoke(this.controller, user.getId(), text);
+			Method make = method(ResolutionController.class, "make", String.class, String.class);
+			return (Resolution) make.invoke(this.controller, user.getUsername(), text);
 		} catch (Exception e) {
 			if (e instanceof InvocationTargetException && e.getCause() instanceof RuntimeException) {
 				throw (RuntimeException) e.getCause();
 			}
-			fail("`ResolutionController#make` is missing the `UUID` method parameter. Was this module done before the first module?");
+			fail("`ResolutionController#make` is missing the `username` method parameter. Was this module done before the first module?");
 			throw new RuntimeException(e);
 		}
 	}
