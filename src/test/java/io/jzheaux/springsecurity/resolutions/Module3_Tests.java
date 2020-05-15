@@ -1,5 +1,6 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,16 @@ public class Module3_Tests {
     @Autowired
     MockMvc mvc;
 
-    @Autowired
+    @Autowired(required = false)
     FilterChainProxy springSecurityFilterChain;
 
     @Autowired(required = false)
     CorsConfigurationSource cors;
+
+    @Before
+    public void setup() {
+        assertNotNull(this.springSecurityFilterChain);
+    }
 
     @Test
     public void task_1() {

@@ -522,7 +522,9 @@ public class Module1_Tests {
 	}
 
 	@Test
-	public void task_14() {
+	public void task_14() throws Exception {
+		task_13();
+
 		Authentication hasread = token("hasread");
 		Method make = method(ResolutionController.class, "make", String.class, String.class);
 		assertNotNull(
