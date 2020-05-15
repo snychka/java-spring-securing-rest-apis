@@ -525,22 +525,22 @@ public class Module1_Tests {
 	public void task_14() throws Exception {
 		task_13();
 
-		Authentication hasread = token("hasread");
+		Authentication haswrite = token("haswrite");
 		Method make = method(ResolutionController.class, "make", String.class, String.class);
 		assertNotNull(
-				"Task 14: Please add the current logged-in user's `UUID` as a method parameter. " +
-						"You can do this by adding the appropriate `@AuthenticationPrincipal`. While technically any method parameter can " +
-						"contain user information, this test expects it to be the first parameter.",
+				"Task 14: Please add the current logged-in user's `username` as a method parameter, including the `@CurrentUsername` annotation." +
+						" While technically any method parameter can " +
+						"contain user information, this test expects it to be the first parameter",
 				make);
-		SecurityContextHolder.getContext().setAuthentication(hasread);
+		SecurityContextHolder.getContext().setAuthentication(haswrite);
 		try {
-			ReflectedUser hasreadUser = new ReflectedUser((User) hasread.getPrincipal());
+			ReflectedUser haswriteUser = new ReflectedUser((User) haswrite.getPrincipal());
 			Resolution resolution =
-					(Resolution) make.invoke(this.resolutionController, hasreadUser.getUsername(), "my resolution");
+					(Resolution) make.invoke(this.resolutionController, haswriteUser.getUsername(), "my resolution");
 			assertEquals(
 					"Task 14: When making a resolution, the user attached to the resolution does not match the logged in user. " +
 							"Make sure you are passing the id of the currently logged-in user to `ResolutionRepository`",
-					resolution.getOwner(), hasreadUser.getUsername());
+					resolution.getOwner(), haswriteUser.getUsername());
 		} catch (Exception e) {
 			fail(
 					"Task 14: `ResolutionController#make threw an exception: " + e);
