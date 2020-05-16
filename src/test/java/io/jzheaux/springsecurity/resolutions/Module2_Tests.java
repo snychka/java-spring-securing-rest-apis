@@ -138,15 +138,15 @@ public class Module2_Tests {
 		AccessDeniedException e = tryAuthorized(this.controller::read, this.hasread);
 		if (e != null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read()` evaluated to `false` when it was " +
-					"given a user with a `READ` permission. Double check your expression; it " +
-					"should look something like `@PreAuthorize(\"hasAuthority('READ')\")`");
+					"given a user with a `resolution:read` permission. Double check your expression; it " +
+					"should look something like `@PreAuthorize(\"hasAuthority('resolution:read')\")`");
 		}
 
 		e = tryAuthorized(this.controller::read, this.haswrite);
 		if (e == null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read()` evaluated to `true` when it was " +
-					"given a user without a `READ` permission. Double check your expression; it " +
-					"should look something like `@PreAuthorize(\"hasAuthority('READ')\")`" );
+					"given a user without a `resolution:read` permission. Double check your expression; it " +
+					"should look something like `@PreAuthorize(\"hasAuthority('resolution:read')\")`" );
 		}
 
 		MvcResult result = this.mvc.perform(get("/resolutions")
@@ -160,7 +160,7 @@ public class Module2_Tests {
 
 		assertNotEquals(
 				"Task 2: The `/resolutions` endpoint failed to authorize `hasread`/`password`. " +
-						"Make sure this username/password is granted the `READ` authority",
+						"Make sure this username/password is granted the `resolution:read` authority",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -177,15 +177,15 @@ public class Module2_Tests {
 		e = tryAuthorized(() -> make("resolution", this.haswrite), this.haswrite);
 		if (e != null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#make` evaluated to `false` when it was " +
-					"given a user with a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+					"given a user with a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`");
 		}
 
 		e = tryAuthorized(() -> make("resolution", this.hasread), this.hasread);
 		if (e == null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#make` evaluated to `true` when it was " +
-					"given a user without a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
+					"given a user without a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`" );
 		}
 
 		readMethod = ResolutionController.class.getDeclaredMethod("read", UUID.class);
@@ -197,15 +197,15 @@ public class Module2_Tests {
 		e = tryAuthorized(() -> this.controller.read(this.hasreadResolution.getId()), this.hasread);
 		if (e != null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read(UUID)` evaluated to `false` when it was " +
-					"given a user with a `READ` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('READ')\")`");
+					"given a user with a `resolution:read` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:read')\")`");
 		}
 
 		e = tryAuthorized(() -> this.controller.read(this.haswriteResolution.getId()), this.haswrite);
 		if (e == null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#read(UUID)` evaluated to `true` when it was " +
-					"given a user without a `READ` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('READ')\")`" );
+					"given a user without a `resolution:read` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:read')\")`" );
 		}
 
 		Method reviseMethod = ResolutionController.class.getDeclaredMethod("revise", UUID.class, String.class);
@@ -217,15 +217,15 @@ public class Module2_Tests {
 		e = tryAuthorized(() -> this.controller.revise(this.haswriteResolution.getId(), "new text"), this.haswrite);
 		if (e != null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#revise(UUID, String)` evaluated to `false` when it was " +
-					"given a user with a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+					"given a user with a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`");
 		}
 
 		e = tryAuthorized(() -> this.controller.revise(this.hasreadResolution.getId(), "new text"), this.hasread);
 		if (e == null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#revise(UUID, String)` evaluated to `true` when it was " +
-					"given a user without a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
+					"given a user without a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`" );
 		}
 
 		Method completeMethod = ResolutionController.class.getDeclaredMethod("complete", UUID.class);
@@ -237,15 +237,15 @@ public class Module2_Tests {
 		e = tryAuthorized(() -> this.controller.complete(this.haswriteResolution.getId()), this.haswrite);
 		if (e != null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#complete(UUID, String)` evaluated to `false` when it was " +
-					"given a user with a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`");
+					"given a user with a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`");
 		}
 
 		e = tryAuthorized(() -> this.controller.complete(this.hasreadResolution.getId()), this.hasread);
 		if (e == null) {
 			fail("Task 2: Your `@PreAuthorize` annotation for `ResolutionController#complete(UUID, String)` evaluated to `true` when it was " +
-					"given a user without a `WRITE` permission. Double check your expression; it " +
-					"should look like `@PreAuthorize(\"hasAuthority('WRITE')\")`" );
+					"given a user without a `resolution:write` permission. Double check your expression; it " +
+					"should look like `@PreAuthorize(\"hasAuthority('resolution:write')\")`" );
 		}
 	}
 
@@ -282,7 +282,7 @@ public class Module2_Tests {
 
 		assertNotEquals(
 				"Task 3: The `/resolution/{id}` endpoint failed to authorize `hasread`/`password`. " +
-						"Make sure this username/password is granted the `READ` authority.",
+						"Make sure this username/password is granted the `resolution:read` authority.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -440,14 +440,14 @@ public class Module2_Tests {
 		}, admin);
 
 		assertNull(
-				"Task 6: The `/resolutions` endpoint denied the admin user. Make sure that the admin is granted the `READ` authority.",
+				"Task 6: The `/resolutions` endpoint denied the admin user. Make sure that the admin is granted the `resolution:read` authority.",
 				e);
 
 
 		e = tryAuthorized(() -> this.controller.read(this.haswriteResolution.getId()), admin);
 		assertNull(
 				"Task 6: The `/resolutions/{id}` GET endpoint failed to authorize the admin user to read a record that doesn't belong to them. " +
-						"Please make sure that the admin has the `READ` permission and please check your `@PostAuthorize` expression for `ResolutionController#read(UUID)`",
+						"Please make sure that the admin has the `resolution:read` permission and please check your `@PostAuthorize` expression for `ResolutionController#read(UUID)`",
 				e);
 	}
 
@@ -562,20 +562,20 @@ public class Module2_Tests {
 				.collect(Collectors.toList());
 
 		assertFalse(
-				"Task 8: Please remove the `READ` and `WRITE` authority from the admin user in the database. " +
+				"Task 8: Please remove the `resolution:read` and `resolution:write` authority from the admin user in the database. " +
 						"Add them via your `UserRepositoryUserDetailsService` instead",
-				userAuthorities.contains("READ") || userAuthorities.contains("WRITE"));
+				userAuthorities.contains("resolution:read") || userAuthorities.contains("resolution:write"));
 		assertTrue(
 				"Task 8: Please make sure the admin still has the `ROLE_ADMIN` authority in the database",
 				userAuthorities.contains("ROLE_ADMIN"));
 
 		assertTrue(
-				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `READ` authority",
-				grantedAuthorities.contains("READ"));
+				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `resolution:read` authority",
+				grantedAuthorities.contains("resolution:read"));
 
 		assertTrue(
-				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `WRITE` authority",
-				grantedAuthorities.contains("WRITE"));
+				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `resolution:write` authority",
+				grantedAuthorities.contains("resolution:write"));
 
 		assertTrue(
 				"Task 8: After calling your `UserDetailsService`, the admin user is still missing the `ROLE_ADMIN` authority",

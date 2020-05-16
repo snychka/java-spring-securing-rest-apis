@@ -297,11 +297,11 @@ public class Module1_Tests {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("hasread");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 			assertEquals(
-					"Task 8: Make sure the user has only the `READ` authority",
+					"Task 8: Make sure the user has only the `resolution:read` authority",
 					1, authorities.size());
 			assertEquals(
-					"Task 8: Make sure the user has only the `READ` authority",
-					"READ", authorities.iterator().next().getAuthority());
+					"Task 8: Make sure the user has only the `resolution:read` authority",
+					"resolution:read", authorities.iterator().next().getAuthority());
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `hasread` with an encoded password of `password`");
@@ -311,11 +311,11 @@ public class Module1_Tests {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("haswrite");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 			assertEquals(
-					"Task 8: Make sure the user has only the `WRITE` authority",
+					"Task 8: Make sure the user has only the `resolution:write` authority",
 					1, authorities.size());
 			assertEquals(
-					"Task 8: Make sure the user has only the `WRITE` authority",
-					"WRITE", authorities.iterator().next().getAuthority());
+					"Task 8: Make sure the user has only the `resolution:write` authority",
+					"resolution:write", authorities.iterator().next().getAuthority());
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `haswrite` with an encoded password of `password`");
@@ -337,8 +337,8 @@ public class Module1_Tests {
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 9: Authorization failed for user `hasread`, which has the 'READ' permission. Please " +
-				"check your security configuration to make sure that `/resolutions` is only requiring the 'READ' permission.",
+				"Task 9: Authorization failed for user `hasread`, which has the 'resolution:read' permission. Please " +
+				"check your security configuration to make sure that `/resolutions` is only requiring the 'resolution:read' permission.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -354,8 +354,8 @@ public class Module1_Tests {
 
 		assertEquals(
 				"Task 9: The `/resolution` POST endpoint allowed `hasread` even though it only was " +
-						"granted 'READ'. Please check your security configuration to make sure that `/resolution` POST is " +
-						"requiring the 'WRITE' permission",
+						"granted 'resolution:read'. Please check your security configuration to make sure that `/resolution` POST is " +
+						"requiring the 'resolution:write' permission",
 				403, result.getResponse().getStatus());
 
 		result = this.mvc.perform(post("/resolution")
@@ -370,8 +370,8 @@ public class Module1_Tests {
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 9: Authorization failed for user `haswrite`, which has the 'WRITE' permission. Please " +
-				"check your security configuration to make sure that `/resolution` POST is only requiring the 'WRITE' permission.",
+				"Task 9: Authorization failed for user `haswrite`, which has the 'resolution:write' permission. Please " +
+				"check your security configuration to make sure that `/resolution` POST is only requiring the 'resolution:write' permission.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -497,7 +497,7 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolutions` endpoint authorized `haswrite`/`password` even though it does not have the `READ` permission.",
+				"Task 13: The `/resolutions` endpoint authorized `haswrite`/`password` even though it does not have the `resolution:read` permission.",
 				result.getResponse().getStatus(), 403);
 
 		result = this.mvc.perform(post("/resolution")
@@ -507,7 +507,7 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolution` `POST` endpoint authorized `hasread`/`password` even though `hasread` only has the `READ` permission.",
+				"Task 13: The `/resolution` `POST` endpoint authorized `hasread`/`password` even though `hasread` only has the `resolution:read` permission.",
 				result.getResponse().getStatus(), 403);
 
 		result = this.mvc.perform(post("/resolution")
@@ -517,7 +517,7 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolution` `POST` response failed to authorize `haswrite`/`password` even though `haswrite` has the `WRITE` password.",
+				"Task 13: The `/resolution` `POST` response failed to authorize `haswrite`/`password` even though `haswrite` has the `resolution:write` password.",
 				result.getResponse().getStatus(), 200);
 	}
 
