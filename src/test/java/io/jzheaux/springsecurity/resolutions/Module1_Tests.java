@@ -424,7 +424,7 @@ public class Module1_Tests {
 		UserDetailsService userDetailsService = null;
 		if (this.userDetailsService instanceof UserRepositoryUserDetailsService) {
 			userDetailsService = this.userDetailsService;
-		} else {
+		} else if (UserDetailsService.class.isAssignableFrom(UserRepositoryUserDetailsService.class)){
 			Constructor<?> defaultConstructor = getConstructor(UserRepositoryUserDetailsService.class);
 			if (defaultConstructor != null) {
 				userDetailsService = (UserDetailsService) defaultConstructor.newInstance();
