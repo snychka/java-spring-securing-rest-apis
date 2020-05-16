@@ -43,6 +43,14 @@ public class User implements Serializable {
         this.id = UUID.randomUUID();
     }
 
+    public User(User user) {
+        this.id = user.id;
+        this.username = user.username;
+        this.password = user.password;
+        this.enabled = user.enabled;
+        this.userAuthorities = user.userAuthorities;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }
@@ -50,6 +58,10 @@ public class User implements Serializable {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public UUID getId() {
+        return id;
     }
 
 
