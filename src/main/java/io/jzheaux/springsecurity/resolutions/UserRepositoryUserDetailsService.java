@@ -77,17 +77,17 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
 
         // STEFAN: needed to create
         public String getPassword() {
-            return this.getPassword();
+            return this.password;
         }
 
         // STEFAN: needed to create
         public String getUsername() {
-            return this.getUsername();
+            return this.username;
         }
 
         // STEFAN: needed to create
         public boolean isEnabled() {
-            return this.isEnabled();
+            return this.enabled;
         }
     }
 
@@ -123,7 +123,7 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
 
     // STEFAN: needed to create
     public boolean isEnabled() {
-        return this.isEnabled();
+        return true;
     }
 }
 
