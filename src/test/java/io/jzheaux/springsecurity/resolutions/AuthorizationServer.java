@@ -68,7 +68,7 @@ class AuthorizationServer extends Dispatcher implements AutoCloseable {
         this.responses.put(jwks, request -> response(new JWKSet(this.key).toString(), 200));
         this.responses.put(introspection, request ->
                 Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION))
-                        .filter(authorization -> isAuthorized(authorization, "client", "secret"))
+                        .filter(authorization -> isAuthorized(authorization, "app", "bfbd9f62-02ce-4638-a370-80d45514bd0a"))
                         .map(authorization -> parseBody(request.getBody()))
                         .map(parameters -> parameters.get("token"))
                         .map(this.tokens::get)
