@@ -339,9 +339,9 @@ public class Module2_Tests {
 				reviseQuery);
 
 		assertTrue(
-				"Task 5: Use the `?#{principal.id}` expression to change the query and ensure that no update is performed unless the " +
+				"Task 5: Use the `?#{authentication.name}` expression to change the query and ensure that no update is performed unless the " +
 						"resolution belongs to the logged-in user",
-				reviseQuery.value().contains("?#{principal"));
+				reviseQuery.value().contains("?#{authentication"));
 
 		AccessDeniedException e = tryAuthorized(
 				() -> this.controller.revise(this.haswriteResolution.getId(), "has write test revised"), this.haswrite);
@@ -384,9 +384,9 @@ public class Module2_Tests {
 				completeQuery);
 
 		assertTrue(
-				"Task 5: Use the `?#{principal.id}` expression to change the query and ensure that no update is performed unless the " +
+				"Task 5: Use the `?#{authentication.name}` expression to change the query and ensure that no update is performed unless the " +
 						"resolution belongs to the logged-in user",
-				completeQuery.value().contains("?#{principal"));
+				completeQuery.value().contains("?#{authentication"));
 
 		e = tryAuthorized(
 				() -> this.controller.complete(this.haswriteResolution.getId()), this.haswrite);
