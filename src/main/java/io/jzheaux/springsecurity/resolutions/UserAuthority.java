@@ -23,7 +23,13 @@ public class UserAuthority {
     User user;
 
     UserAuthority() {
+        //this.id = UUID.randomUUID();
+    }
+
+    public UserAuthority(User user, String authority) {
         this.id = UUID.randomUUID();
+        this.user = user;
+        this.authority = authority;
     }
 
     public void setUser(User user) {
@@ -32,6 +38,10 @@ public class UserAuthority {
 
     public void setAuthority(String authority) {
         this.authority = authority;
+    }
+
+    public String getAuthority() {
+        return this.authority;
     }
 }
 

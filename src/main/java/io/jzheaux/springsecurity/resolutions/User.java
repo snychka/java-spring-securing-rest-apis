@@ -3,11 +3,14 @@ package io.jzheaux.springsecurity.resolutions;
 
 import java.io.Serializable;
 import javax.persistence.*;
-import java.util.ArrayList;
 import java.util.UUID;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.ArrayList;
+import javax.persistence.CascadeType;
+import javax.persistence.FetchType;
+import javax.persistence.OneToMany;
 
 @Entity(name="users")
 public class User implements Serializable {
@@ -21,27 +24,17 @@ public class User implements Serializable {
     @Column
     String password;
 
+    // STEFAN: needed to make public
     @Column
-    boolean enabled = true;
+    public boolean enabled = true;
 
+    // STEFAN: needed to make public
     @OneToMany(fetch=FetchType.EAGER, cascade=CascadeType.ALL)
-    Collection<UserAuthority> userAuthorities = new ArrayList<>();
-
-    public Collection<UserAuthority> getUserAuthorities() {
-        return Collections.unmodifiableCollection(this.userAuthorities);
-    }
-
-    public void grantAuthority(String authority) {
-        UserAuthority userAuthority = new UserAuthority();
-        userAuthority.setUser(this);
-        userAuthority.setAuthority(authority);
-        this.userAuthorities.add(userAuthority);
-    }
+    public Collection<UserAuthority> userAuthorities = new ArrayList<>();
 
 
-    User() {
-        this.id = UUID.randomUUID();
-    }
+
+    User() {}
 
     public User(User user) {
         this.id = user.id;
@@ -49,6 +42,27 @@ public class User implements Serializable {
         this.password = user.password;
         this.enabled = user.enabled;
         this.userAuthorities = user.userAuthorities;
+    }
+
+    public User(String username, String password) {
+        this.id = UUID.randomUUID();
+        this.username = username;
+        this.password = password;
+    }
+
+    public Collection<UserAuthority> getUserAuthorities() {
+        return Collections.unmodifiableCollection(this.userAuthorities);
+    }
+
+    public void grantAuthority(String authority) {
+        UserAuthority userAuthority = new UserAuthority(this, authority);
+        this.userAuthorities.add(userAuthority);
+        /*UserAuthority userAuthority = new UserAuthority();
+        userAuthority.setUser(this);
+        userAuthority.setAuthority(authority);
+        this.userAuthorities.add(userAuthority);
+
+         */
     }
 
     public void setUsername(String username) {
@@ -59,6 +73,23 @@ public class User implements Serializable {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    // STEFAN: needed to create
+    public String getPassword() {
+        return this.password;
+    }
+
+    // STEFAN: needed to create
+    public String getUsername() {
+        return this.username;
+    }
+
+    // STEFAN: needed to create
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+
 
     public UUID getId() {
         return id;
