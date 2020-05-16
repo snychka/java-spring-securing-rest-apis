@@ -1,5 +1,6 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,8 @@ import static org.springframework.http.HttpMethod.GET;
 @SpringBootApplication
 public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 
+	@Autowired UserRepositoryJwtAuthenticationConverter jwtAuthenticationConverter;
+
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http
@@ -25,22 +28,14 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 				.mvcMatchers(GET, "/resolutions", "/resolution/**").hasAuthority("resolution:read")
 				.anyRequest().hasAuthority("resolution:write"))
 			.httpBasic(basic -> {})
-			.oauth2ResourceServer(oauth2 -> oauth2.jwt())
+			.oauth2ResourceServer(oauth2 -> oauth2
+				.jwt().jwtAuthenticationConverter(this.jwtAuthenticationConverter))
 			.cors(cors -> {});
 	}
 
 	@Bean
 	public UserDetailsService userDetailsService(UserRepository users) {
 		return new UserRepositoryUserDetailsService(users);
-	}
-
-	@Bean
-	public JwtAuthenticationConverter jwtAuthenticationConverter() {
-		JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-		JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-		grantedAuthoritiesConverter.setAuthorityPrefix("");
-		converter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-		return converter;
 	}
 
 	@Bean
