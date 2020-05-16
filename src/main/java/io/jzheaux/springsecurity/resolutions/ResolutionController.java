@@ -33,7 +33,7 @@ public class ResolutionController {
 
 	@PostMapping("/resolution")
 	public Resolution make(@RequestBody String text) {
-		UUID owner = UUID.fromString("219168d2-1da4-4f8a-85d8-95b4377af3c1");
+		String owner = "user";
 		Resolution resolution = new Resolution(text, owner);
 		return this.resolutions.save(resolution);
 	}
