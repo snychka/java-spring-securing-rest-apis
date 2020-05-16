@@ -3,6 +3,9 @@ package io.jzheaux.springsecurity.resolutions;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PostFilter;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,10 +38,13 @@ public class ResolutionController {
 	@GetMapping("/resolutions")
 	public Iterable<Resolution> read() {
 		Iterable<Resolution> resolutions = this.resolutions.findAll();
-		for (Resolution resolution : resolutions) {
-			String name = this.users.findByUsername(resolution.getOwner())
-					.map(User::getFullName).orElse("none");
-			resolution.setText(resolution.getText() + ", by " + name);
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("user:read"))) {
+			for (Resolution resolution : resolutions) {
+				String name = this.users.findByUsername(resolution.getOwner())
+						.map(User::getFullName).orElse("none");
+				resolution.setText(resolution.getText() + ", by " + name);
+			}
 		}
 		return resolutions;
 	}
