@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,9 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
     }
 
      */
+
+
+    /*
     @Override
     public UserDetails loadUserByUsername(String username) {
         return this.users.findByUsername(username)
@@ -48,10 +52,29 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
                 .orElseThrow(() -> new UsernameNotFoundException("invalid user"));
 
     }
+     */
 
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return this.users.findByUsername(username)
+                .map(this::map)
+                .orElseThrow(() -> new UsernameNotFoundException("no user"));
+    }
 
 
     private static class BridgeUser extends User implements UserDetails {
+        private  Collection<GrantedAuthority> authorities;
+
+        public BridgeUser(User user, Collection<GrantedAuthority> authorities) {
+            super(user);
+            this.authorities = authorities;
+        }
+
+        public Collection<? extends GrantedAuthority> getAuthorities() {
+            return this.authorities;
+        }
+
+        /*
         public BridgeUser(User user) {
             super(user);
         }
@@ -62,6 +85,7 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         }
+        */
 
         public boolean isAccountNonExpired() {
             return this.enabled;
@@ -124,6 +148,20 @@ public class UserRepositoryUserDetailsService implements Serializable, UserDetai
     // STEFAN: needed to create
     public boolean isEnabled() {
         return true;
+    }
+
+
+    private BridgeUser map(User user) {
+        Collection<GrantedAuthority> authorities = new HashSet<>();
+        for (UserAuthority userAuthority : user.getUserAuthorities()) {
+            String authority = userAuthority.getAuthority();
+            if ("ROLE_ADMIN".equals(authority)) {
+                authorities.add(new SimpleGrantedAuthority("resolution:read"));
+                authorities.add(new SimpleGrantedAuthority("resolution:write"));
+            }
+            authorities.add(new SimpleGrantedAuthority(authority));
+        }
+        return new BridgeUser(user, authorities);
     }
 }
 
