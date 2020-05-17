@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getConstructor;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByColumnName;
+import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByName;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldHavingAnnotation;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getProperty;
 
@@ -20,7 +21,10 @@ public class ReflectedUser {
 	static Field usernameColumnField;
 	static Field passwordColumnField;
 	static Field enabledColumnField;
+	static Field nameColumnField;
+	static Field subscriptionColumnField;
 	static Field userAuthorityCollectionField;
+	static Field userFriendCollectionField;
 	static Method grantAuthorityMethod;
 
 	static {
@@ -34,8 +38,13 @@ public class ReflectedUser {
 		if (passwordColumnField != null) passwordColumnField.setAccessible(true);
 		enabledColumnField = getDeclaredFieldByColumnName(User.class, "enabled");
 		if (enabledColumnField != null) enabledColumnField.setAccessible(true);
-		userAuthorityCollectionField = getDeclaredFieldHavingAnnotation(User.class, OneToMany.class);
+		nameColumnField = getDeclaredFieldByColumnName(User.class, "full_name");
+		if (nameColumnField != null) nameColumnField.setAccessible(true);
+		subscriptionColumnField = getDeclaredFieldByColumnName(User.class, "subscription");
+		if (subscriptionColumnField != null) subscriptionColumnField.setAccessible(true);
+		userAuthorityCollectionField = getDeclaredFieldByName(User.class, "userAuthorities");
 		if (userAuthorityCollectionField != null) userAuthorityCollectionField.setAccessible(true);
+		userFriendCollectionField = getDeclaredFieldByName(User.class, "friends");
 		try {
 			grantAuthorityMethod = User.class.getDeclaredMethod("grantAuthority", String.class);
 		} catch (Exception ignored) {
@@ -77,9 +86,15 @@ public class ReflectedUser {
 		return getProperty(this.user, passwordColumnField);
 	}
 
+	String getFullName() { return getProperty(this.user, nameColumnField); }
+
+	String getSubscription() { return getProperty(this.user, subscriptionColumnField); }
+
 	Collection<UserAuthority> getUserAuthorities() {
 		return getProperty(this.user, userAuthorityCollectionField);
 	}
+
+	Collection<User> getFriends() { return getProperty(this.user, userFriendCollectionField); }
 
 	void grantAuthority(String authority) {
 		try {

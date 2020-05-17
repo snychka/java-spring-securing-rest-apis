@@ -44,7 +44,7 @@ public class ReflectionSupport {
 						name = f.getName();
 					}
 
-					return name.equals(columnName);
+					return columnName.equals(name);
 				})
 				.findFirst().orElse(null);
 	}
