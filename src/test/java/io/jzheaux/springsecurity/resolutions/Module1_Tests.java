@@ -72,17 +72,13 @@ public class Module1_Tests {
 	@Autowired
 	ResolutionController resolutionController;
 
-	/**
-	 * Add the appropriate Spring Boot starter dependency
-	 */
-	@Test
-	public void task_1() throws Exception {
+	private  static void task_1_content(Module1_Tests context) throws Exception {
 		assertNotNull(
 				"Task 1: Couldn't find a `UserDetailsService` in the application context. " +
 						"Make sure that you've removed the `SecurityAutoConfiguration` exclusion from teh `@SpringBootApplication` annotation.",
-				this.userDetailsService);
+				context.userDetailsService);
 
-		MvcResult result = this.mvc.perform(get("/resolutions"))
+		MvcResult result = context.mvc.perform(get("/resolutions"))
 				.andReturn();
 
 		assertEquals(
@@ -102,10 +98,18 @@ public class Module1_Tests {
 				wwwAuthenticate.startsWith("Basic"));
 	}
 
+	/**
+	 * Add the appropriate Spring Boot starter dependency
+	 */
+	@Test
+	public void task_1() throws Exception {
+		task_1_content(this);
+	}
+
 	@Test
 	public void task_2() throws Exception {
 		// add InMemoryUserDetailsManager
-		task_1();
+		task_1_content(this);
 		String failureMessage = assertUserDetailsService(InMemoryUserDetailsManager.class);
 		if (failureMessage != null) {
 			fail("Task 2: " + failureMessage);
@@ -124,7 +128,7 @@ public class Module1_Tests {
 	@Test
 	public void task_3() throws Exception {
 		// create User
-		task_1();
+		task_1_content(this);
 		Entity userEntity = User.class.getAnnotation(Entity.class);
 
 		assertTrue(
@@ -419,7 +423,7 @@ public class Module1_Tests {
 	@Test
 	public void task_11() throws Exception {
 		// add custom UserDetailsService
-		task_1();
+		task_1_content(this);
 
 		UserDetailsService userDetailsService = null;
 		if (this.userDetailsService instanceof UserRepositoryUserDetailsService) {
