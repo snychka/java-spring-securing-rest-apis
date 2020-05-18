@@ -6,6 +6,7 @@ import javax.persistence.JoinColumn;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.stream.Stream;
 
 public class ReflectionSupport {
@@ -43,7 +44,7 @@ public class ReflectionSupport {
 						name = f.getName();
 					}
 
-					return name.equals(columnName);
+					return columnName.equals(name);
 				})
 				.findFirst().orElse(null);
 	}
@@ -68,6 +69,15 @@ public class ReflectionSupport {
 			return (T) field.get(o);
 		} catch (Exception e) {
 			throw new RuntimeException("Tried to get " + field + " from " + o, e);
+		}
+	}
+
+	static <T extends Annotation> T annotation(Class<T> annotation, String method, Class<?>... params) {
+		try {
+			Method m = ResolutionController.class.getDeclaredMethod(method, params);
+			return m.getAnnotation(annotation);
+		} catch (Exception e) {
+			return null;
 		}
 	}
 }

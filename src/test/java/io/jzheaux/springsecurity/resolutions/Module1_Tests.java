@@ -7,7 +7,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -28,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -40,6 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getConstructor;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -153,12 +154,12 @@ public class Module1_Tests {
 		// create UserRepository
 		task_3(); // check that everything from Task 3 still holds
 		assertNotNull(
-				"Task 4: Make sure that your `UserRepository` is extending `CrudRepository<User,UUID>`",
-				this.users);
-
-		assertNotNull(
 				"Task 4: Make sure that your `UserRepository` is annotated with " + Repository.class,
 				UserRepository.class.getAnnotation(Repository.class));
+
+		assertNotNull(
+				"Task 4: Make sure that your `UserRepository` is extending `CrudRepository<User,UUID>`",
+				this.users);
 	}
 
 	@Test
@@ -296,11 +297,11 @@ public class Module1_Tests {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("hasread");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 			assertEquals(
-					"Task 8: Make sure the user has only the `READ` authority",
+					"Task 8: Make sure the user has only the `resolution:read` authority",
 					1, authorities.size());
 			assertEquals(
-					"Task 8: Make sure the user has only the `READ` authority",
-					"READ", authorities.iterator().next().getAuthority());
+					"Task 8: Make sure the user has only the `resolution:read` authority",
+					"resolution:read", authorities.iterator().next().getAuthority());
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `hasread` with an encoded password of `password`");
@@ -310,11 +311,11 @@ public class Module1_Tests {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("haswrite");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 			assertEquals(
-					"Task 8: Make sure the user has only the `WRITE` authority",
+					"Task 8: Make sure the user has only the `resolution:write` authority",
 					1, authorities.size());
 			assertEquals(
-					"Task 8: Make sure the user has only the `WRITE` authority",
-					"WRITE", authorities.iterator().next().getAuthority());
+					"Task 8: Make sure the user has only the `resolution:write` authority",
+					"resolution:write", authorities.iterator().next().getAuthority());
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `haswrite` with an encoded password of `password`");
@@ -336,8 +337,8 @@ public class Module1_Tests {
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 9: Authorization failed for user `hasread`, which has the 'READ' permission. Please " +
-				"check your security configuration to make sure that `/resolutions` is only requiring the 'READ' permission.",
+				"Task 9: Authorization failed for user `hasread`, which has the 'resolution:read' permission. Please " +
+				"check your security configuration to make sure that `/resolutions` is only requiring the 'resolution:read' permission.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -353,8 +354,8 @@ public class Module1_Tests {
 
 		assertEquals(
 				"Task 9: The `/resolution` POST endpoint allowed `hasread` even though it only was " +
-						"granted 'READ'. Please check your security configuration to make sure that `/resolution` POST is " +
-						"requiring the 'WRITE' permission",
+						"granted 'resolution:read'. Please check your security configuration to make sure that `/resolution` POST is " +
+						"requiring the 'resolution:write' permission",
 				403, result.getResponse().getStatus());
 
 		result = this.mvc.perform(post("/resolution")
@@ -369,8 +370,8 @@ public class Module1_Tests {
 				401, result.getResponse().getStatus());
 
 		assertNotEquals(
-				"Task 9: Authorization failed for user `haswrite`, which has the 'WRITE' permission. Please " +
-				"check your security configuration to make sure that `/resolution` POST is only requiring the 'WRITE' permission.",
+				"Task 9: Authorization failed for user `haswrite`, which has the 'resolution:write' permission. Please " +
+				"check your security configuration to make sure that `/resolution` POST is only requiring the 'resolution:write' permission.",
 				403, result.getResponse().getStatus());
 
 		assertEquals(
@@ -420,13 +421,29 @@ public class Module1_Tests {
 		// add custom UserDetailsService
 		task_1();
 
-		assertTrue(
-				"Task 11: The `UserDetailsService` bean is not of type `" + UserRepositoryUserDetailsService.class.getName() + "`. " +
-						"Please double-check the type you are returning for your `UserDetailsService` `@Bean`.",
-				this.userDetailsService instanceof UserRepositoryUserDetailsService);
+		UserDetailsService userDetailsService = null;
+		if (this.userDetailsService instanceof UserRepositoryUserDetailsService) {
+			userDetailsService = this.userDetailsService;
+		} else if (UserDetailsService.class.isAssignableFrom(UserRepositoryUserDetailsService.class)){
+			Constructor<?> defaultConstructor = getConstructor(UserRepositoryUserDetailsService.class);
+			if (defaultConstructor != null) {
+				userDetailsService = (UserDetailsService) defaultConstructor.newInstance();
+			} else {
+				Constructor<?> userRepositoryConstructor =
+						getConstructor(UserRepositoryUserDetailsService.class, UserRepository.class);
+				if (userRepositoryConstructor != null) {
+					userDetailsService = (UserDetailsService) userRepositoryConstructor.newInstance(this.users);
+				}
+			}
+		}
+
+		assertNotNull(
+				"Task 11: Could not construct an instance of type `UserRepositoryUserDetailsService`. " +
+						"Make sure that it either has a default constructor or one that takes as `UserRepository` instance",
+				userDetailsService);
 
 		try {
-			this.userDetailsService.loadUserByUsername(UUID.randomUUID().toString());
+			userDetailsService.loadUserByUsername(UUID.randomUUID().toString());
 			fail("Task 11: Make sure your custom `UserDetailsService` throws a `UsernameNotFoundException` when it can't find a user" );
 		} catch (UsernameNotFoundException expected) {
 			// ignoring
@@ -480,7 +497,7 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolutions` endpoint authorized `haswrite`/`password` even though it does not have the `READ` permission.",
+				"Task 13: The `/resolutions` endpoint authorized `haswrite`/`password` even though it does not have the `resolution:read` permission.",
 				result.getResponse().getStatus(), 403);
 
 		result = this.mvc.perform(post("/resolution")
@@ -490,7 +507,7 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolution` `POST` endpoint authorized `hasread`/`password` even though `hasread` only has the `READ` permission.",
+				"Task 13: The `/resolution` `POST` endpoint authorized `hasread`/`password` even though `hasread` only has the `resolution:read` permission.",
 				result.getResponse().getStatus(), 403);
 
 		result = this.mvc.perform(post("/resolution")
@@ -500,28 +517,30 @@ public class Module1_Tests {
 				.andReturn();
 
 		assertEquals(
-				"Task 13: The `/resolution` `POST` response failed to authorize `haswrite`/`password` even though `haswrite` has the `WRITE` password.",
+				"Task 13: The `/resolution` `POST` response failed to authorize `haswrite`/`password` even though `haswrite` has the `resolution:write` password.",
 				result.getResponse().getStatus(), 200);
 	}
 
 	@Test
-	public void task_14() {
-		Authentication hasread = token("hasread");
-		Method make = method(ResolutionController.class, "make", UUID.class, String.class);
+	public void task_14() throws Exception {
+		task_13();
+
+		Authentication haswrite = token("haswrite");
+		Method make = method(ResolutionController.class, "make", String.class, String.class);
 		assertNotNull(
-				"Task 14: Please add the current logged-in user's `UUID` as a method parameter. " +
-						"You can do this by adding the appropriate `@AuthenticationPrincipal`. While technically any method parameter can " +
-						"contain user information, this test expects it to be the first parameter.",
+				"Task 14: Please add the current logged-in user's `username` as a method parameter, including the `@CurrentUsername` annotation." +
+						" While technically any method parameter can " +
+						"contain user information, this test expects it to be the first parameter",
 				make);
-		SecurityContextHolder.getContext().setAuthentication(hasread);
+		SecurityContextHolder.getContext().setAuthentication(haswrite);
 		try {
-			ReflectedUser hasreadUser = new ReflectedUser((User) hasread.getPrincipal());
+			ReflectedUser haswriteUser = new ReflectedUser((User) haswrite.getPrincipal());
 			Resolution resolution =
-					(Resolution) make.invoke(this.resolutionController, hasreadUser.getId(), "my resolution");
+					(Resolution) make.invoke(this.resolutionController, haswriteUser.getUsername(), "my resolution");
 			assertEquals(
 					"Task 14: When making a resolution, the user attached to the resolution does not match the logged in user. " +
 							"Make sure you are passing the id of the currently logged-in user to `ResolutionRepository`",
-					resolution.getOwner(), hasreadUser.getId());
+					resolution.getOwner(), haswriteUser.getUsername());
 		} catch (Exception e) {
 			fail(
 					"Task 14: `ResolutionController#make threw an exception: " + e);
