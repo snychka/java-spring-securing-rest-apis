@@ -24,6 +24,8 @@ import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import static org.springframework.http.HttpMethod.GET;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @SpringBootApplication
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -38,13 +40,28 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 		http
 				.authorizeRequests(authz -> authz
 						.anyRequest().authenticated())
-				.httpBasic(basic -> {});
+				.httpBasic(basic -> {})
+				.cors(cors -> {});
 		/*http.authorizeRequests(authz -> authz
 						.mvcMatchers(GET, "/resolutions", "/resolution/**").hasAuthority("resolution:read")
 						.anyRequest().hasAuthority("resolution:write"))
 				.httpBasic(basic -> {});
 
 		 */
+	}
+
+	@Bean
+	WebMvcConfigurer webMvcConfigurer() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+				registry.addMapping("/**")
+						// .maxAge(0) // if using local verification
+						.allowedOrigins("http://localhost:4000")
+						.allowedMethods("HEAD")
+						.allowedHeaders("Authorization");
+			}
+		};
 	}
 
 	@Bean

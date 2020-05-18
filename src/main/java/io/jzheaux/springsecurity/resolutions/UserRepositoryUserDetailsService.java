@@ -26,7 +26,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-// STEEFAN: needed to implement all 3 interfaces
+// STEFAN: needed to implement all 3 interfaces
 public class UserRepositoryUserDetailsService implements Serializable, UserDetails, UserDetailsService {
 
     private final UserRepository users;
