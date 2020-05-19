@@ -109,7 +109,7 @@ public class Module5_Tests {
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
         @Bean
         JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
-            return JwtDecoders.fromOidcIssuerLocation(properties.getJwt().getIssuerUri());
+            return JwtDecoders.fromOidcIssuerLocation(this.server.issuer());
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
