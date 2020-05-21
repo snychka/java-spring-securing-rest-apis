@@ -22,4 +22,6 @@ RUN ["mvn", "de.qaware.maven:go-offline-maven-plugin:resolve-dependencies"]
 
 COPY --chown=projects:projects . .
 
+RUN ["mvn", "clean"]
+
 ENTRYPOINT ["sh"]

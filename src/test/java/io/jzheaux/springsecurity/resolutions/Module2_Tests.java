@@ -4,9 +4,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,6 +29,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
+import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -84,10 +93,37 @@ public class Module2_Tests {
 	Resolution hasreadResolution;
 	Resolution haswriteResolution;
 
+	@TestConfiguration
+	static class TestConfig {
+
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
+		@Bean
+		JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
+			return NimbusJwtDecoder
+					.withJwkSetUri(properties.getJwt().getIssuerUri() + "/protocol/openid-connect/certs")
+					.build();
+		}
+
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+		@ConditionalOnMissingBean
+		@Bean
+		OpaqueTokenIntrospector introspector(OAuth2ResourceServerProperties properties) {
+			return new NimbusOpaqueTokenIntrospector(
+					properties.getOpaquetoken().getIntrospectionUri(),
+					properties.getOpaquetoken().getClientId(),
+					properties.getOpaquetoken().getClientSecret());
+		}
+
+	}
+
 	@Before
 	public void setup() {
-		assertNotNull(this.userDetailsService);
-		assertNotNull(this.users);
+		assertNotNull(
+				"Module 1: Could not find `UserDetailsService` in the application context; make sure to complete Module 1 " +
+						"before starting this one", this.userDetailsService);
+		assertNotNull(
+				"Module 1: Could not find `UserRepository<User, UUID>` in the application context; make sure to complete Module 1 " +
+						"before starting this one", this.users);
 		this.hasread = token("hasread");
 		this.haswrite = token("haswrite");
 		this.hasreadResolution = this.repository.save(new Resolution("has read test", "hasread"));

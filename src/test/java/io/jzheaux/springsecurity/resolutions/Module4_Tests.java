@@ -7,6 +7,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,11 +17,17 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.RequestEntity;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -31,18 +38,24 @@ import org.springframework.security.oauth2.server.resource.introspection.OpaqueT
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.util.Collections;
 import java.util.UUID;
 
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByColumnName;
+import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType.BEARER;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -84,12 +97,16 @@ public class Module4_Tests {
     ResolutionRepository resolutionRepository;
 
     @Autowired(required = false)
-    CrudRepository<User, UUID> userRepository;
+    CrudRepository<User, UUID> users;
 
     @Before
     public void setup() {
-        assertNotNull(this.userDetailsService);
-        assertNotNull(this.userRepository);
+        assertNotNull(
+                "Module 1: Could not find `UserDetailsService` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.userDetailsService);
+        assertNotNull(
+                "Module 1: Could not find `UserRepository<User, UUID>` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.users);
     }
 
     @TestConfiguration
@@ -113,6 +130,7 @@ public class Module4_Tests {
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+        @ConditionalOnMissingBean
         @Bean
         OpaqueTokenIntrospector introspector(OAuth2ResourceServerProperties properties) {
             return new NimbusOpaqueTokenIntrospector(
@@ -124,6 +142,56 @@ public class Module4_Tests {
         @Bean
         AuthorizationServer authz() {
             return this.server;
+        }
+    }
+
+
+    @TestConfiguration
+    static class OpaqueTokenPostProcessor {
+        @Autowired
+        AuthorizationServer authz;
+
+        @Autowired(required=false)
+        void introspector(OpaqueTokenIntrospector introspector) throws Exception {
+            NimbusOpaqueTokenIntrospector nimbus = null;
+            if (introspector instanceof NimbusOpaqueTokenIntrospector) {
+                nimbus = (NimbusOpaqueTokenIntrospector) introspector;
+            } else if (introspector instanceof UserRepositoryOpaqueTokenIntrospector) {
+                Field delegate =
+                        getDeclaredFieldByType(UserRepositoryOpaqueTokenIntrospector.class, OpaqueTokenIntrospector.class);
+                if (delegate == null) {
+                    delegate = getDeclaredFieldByType(UserRepositoryOpaqueTokenIntrospector.class, NimbusOpaqueTokenIntrospector.class);
+                }
+                if (delegate != null) {
+                    delegate.setAccessible(true);
+                    nimbus = (NimbusOpaqueTokenIntrospector) delegate.get(introspector);
+                }
+            }
+
+            if (nimbus != null) {
+                nimbus.setRequestEntityConverter(
+                        defaultRequestEntityConverter(URI.create(this.authz.introspectionUri())));
+            }
+        }
+
+        private Converter<String, RequestEntity<?>> defaultRequestEntityConverter(URI introspectionUri) {
+            return token -> {
+                HttpHeaders headers = requestHeaders();
+                MultiValueMap<String, String> body = requestBody(token);
+                return new RequestEntity<>(body, headers, HttpMethod.POST, introspectionUri);
+            };
+        }
+
+        private HttpHeaders requestHeaders() {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON_UTF8));
+            return headers;
+        }
+
+        private MultiValueMap<String, String> requestBody(String token) {
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("token", token);
+            return body;
         }
     }
 
@@ -176,8 +244,7 @@ public class Module4_Tests {
                 this.jwtAuthenticationConverter);
 
         String token = this.authz.token("user", "resolution:read");
-        Jwt jwt = this.jwt.decode(token);
-        Authentication authentication = this.jwtAuthenticationConverter.convert(jwt);
+        Authentication authentication = getAuthentication(token);
         assertFalse(
                 "Task 3: For a token with a scope of `resolution:read`, `JwtAuthenticationConverter` returned no scopes back",
                 authentication.getAuthorities().isEmpty());
@@ -209,8 +276,7 @@ public class Module4_Tests {
         this.resolutionRepository.save(new Resolution("new read resolution", "hasread"));
 
         String token = this.authz.token("hasread", "resolution:read", "user:read");
-        Jwt jwt = this.jwt.decode(token);
-        Authentication authentication = this.jwtAuthenticationConverter.convert(jwt);
+        Authentication authentication = getAuthentication(token);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         try {
             Iterable<Resolution> resolutions = this.resolutionController.read();
@@ -232,8 +298,7 @@ public class Module4_Tests {
         // conditionally send user's name in result, based on permission
 
         String token = this.authz.token("hasread", "resolution:read");
-        Jwt jwt = this.jwt.decode(token);
-        Authentication authentication = this.jwtAuthenticationConverter.convert(jwt);
+        Authentication authentication = getAuthentication(token);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         try {
             Iterable<Resolution> resolutions = this.resolutionController.read();
@@ -261,8 +326,7 @@ public class Module4_Tests {
 
         String token = this.authz.token(UUID.randomUUID().toString(), "resolution:write");
         try {
-            Jwt jwt = this.jwt.decode(token);
-            this.jwtAuthenticationConverter.convert(jwt);
+            getAuthentication(token);
             fail(
                     "Task 6: Create a custom `Converter<Jwt, AbstractAuthenticationToken>` that reconciles the `sub` field in the `Jwt` " +
                             "with what's in the `UserRepository`. If the user isn't there, throw a `UsernameNotFoundException`.");
@@ -277,8 +341,7 @@ public class Module4_Tests {
         // custom authentication token
 
         String token = this.authz.token("hasread", "resolution:read");
-        Jwt jwt = this.jwt.decode(token);
-        Authentication authentication = this.jwtAuthenticationConverter.convert(jwt);
+        Authentication authentication = getAuthentication(token);
         assertTrue(
                 "Task 7: Make sure that you've correctly mapped a `User` to an `OAuth2AuthenticatedPrincipal`.",
                 authentication instanceof BearerTokenAuthentication);
@@ -302,7 +365,7 @@ public class Module4_Tests {
         this.authz.revoke(mismatch);
         String missing = this.authz.token("hasread"); // client doesn't grant
         result = this.mvc.perform(get("/resolutions")
-                .header("Authorization", "Bearer " + mismatch))
+                .header("Authorization", "Bearer " + missing))
                 .andReturn();
         assertEquals(
                 "Task 7: Client successfully read a resolution for `hasread`, even though `hasread` didn't grant it that permission. " +
@@ -311,4 +374,14 @@ public class Module4_Tests {
         this.authz.revoke(missing);
     }
 
+    private Authentication getAuthentication(String token) {
+        if (this.jwt != null) {
+            Jwt jwt = this.jwt.decode(token);
+            return this.jwtAuthenticationConverter.convert(jwt);
+        }
+
+        OAuth2AuthenticatedPrincipal principal = this.introspector.introspect(token);
+        OAuth2AccessToken credentials = new OAuth2AccessToken(BEARER, token, null, null);
+        return new BearerTokenAuthentication(principal, credentials, principal.getAuthorities());
+    }
 }
