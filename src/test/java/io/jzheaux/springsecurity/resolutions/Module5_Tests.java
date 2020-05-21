@@ -89,7 +89,9 @@ public class Module5_Tests {
 
     @Before
     public void setup() {
-        assertNotNull(this.userDetailsService);
+        assertNotNull(
+                "Module 1: Could not find `UserDetailsService` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.userDetailsService);
     }
 
     @TestConfiguration

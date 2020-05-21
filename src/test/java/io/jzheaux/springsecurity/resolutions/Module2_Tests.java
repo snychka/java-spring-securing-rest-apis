@@ -118,8 +118,12 @@ public class Module2_Tests {
 
 	@Before
 	public void setup() {
-		assertNotNull(this.userDetailsService);
-		assertNotNull(this.users);
+		assertNotNull(
+				"Module 1: Could not find `UserDetailsService` in the application context; make sure to complete Module 1 " +
+						"before starting this one", this.userDetailsService);
+		assertNotNull(
+				"Module 1: Could not find `UserRepository<User, UUID>` in the application context; make sure to complete Module 1 " +
+						"before starting this one", this.users);
 		this.hasread = token("hasread");
 		this.haswrite = token("haswrite");
 		this.hasreadResolution = this.repository.save(new Resolution("has read test", "hasread"));

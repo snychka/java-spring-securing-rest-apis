@@ -59,7 +59,10 @@ public class Module3_Tests {
 
     @Before
     public void setup() {
-        assertNotNull(this.springSecurityFilterChain);
+        assertNotNull(
+                "Module 1: Could not find the Spring Security Filter Chain in the application context;" +
+                        "make sure that you complete the earlier modules before starting this one",
+                this.springSecurityFilterChain);
     }
 
     @TestConfiguration

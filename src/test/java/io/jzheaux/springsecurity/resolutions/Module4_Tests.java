@@ -97,12 +97,16 @@ public class Module4_Tests {
     ResolutionRepository resolutionRepository;
 
     @Autowired(required = false)
-    CrudRepository<User, UUID> userRepository;
+    CrudRepository<User, UUID> users;
 
     @Before
     public void setup() {
-        assertNotNull(this.userDetailsService);
-        assertNotNull(this.userRepository);
+        assertNotNull(
+                "Module 1: Could not find `UserDetailsService` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.userDetailsService);
+        assertNotNull(
+                "Module 1: Could not find `UserRepository<User, UUID>` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.users);
     }
 
     @TestConfiguration
