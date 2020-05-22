@@ -3,21 +3,31 @@ package io.jzheaux.springsecurity.resolutions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
+import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.stereotype.Repository;
@@ -43,6 +53,7 @@ import java.util.stream.StreamSupport;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getConstructor;
 import static io.jzheaux.springsecurity.resolutions.ReflectionSupport.getDeclaredFieldByType;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -71,6 +82,29 @@ public class Module1_Tests {
 
 	@Autowired
 	ResolutionController resolutionController;
+
+	@TestConfiguration
+	static class TestConfig {
+
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
+		@Bean
+		JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
+			return NimbusJwtDecoder
+					.withJwkSetUri(properties.getJwt().getIssuerUri() + "/protocol/openid-connect/certs")
+					.build();
+		}
+
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+		@ConditionalOnMissingBean
+		@Bean
+		OpaqueTokenIntrospector introspector(OAuth2ResourceServerProperties properties) {
+			return new NimbusOpaqueTokenIntrospector(
+					properties.getOpaquetoken().getIntrospectionUri(),
+					properties.getOpaquetoken().getClientId(),
+					properties.getOpaquetoken().getClientSecret());
+		}
+
+	}
 
 	/**
 	 * Add the appropriate Spring Boot starter dependency
@@ -296,12 +330,12 @@ public class Module1_Tests {
 		try {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("hasread");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
-			assertEquals(
-					"Task 8: Make sure the user has only the `resolution:read` authority",
-					1, authorities.size());
-			assertEquals(
-					"Task 8: Make sure the user has only the `resolution:read` authority",
-					"resolution:read", authorities.iterator().next().getAuthority());
+			assertTrue(
+					"Task 8: Make sure the `hasread` user has the `resolution:read` authority",
+					authorities.contains(new SimpleGrantedAuthority("resolution:read")));
+			assertFalse(
+					"Task 8: Make sure the `hasread` user doesn't not have the `resolution:write` authority",
+					authorities.contains(new SimpleGrantedAuthority("resolution:write")));
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `hasread` with an encoded password of `password`");
@@ -310,12 +344,12 @@ public class Module1_Tests {
 		try {
 			UserDetails userDetails = this.userDetailsService.loadUserByUsername("haswrite");
 			Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
-			assertEquals(
-					"Task 8: Make sure the user has only the `resolution:write` authority",
-					1, authorities.size());
-			assertEquals(
-					"Task 8: Make sure the user has only the `resolution:write` authority",
-					"resolution:write", authorities.iterator().next().getAuthority());
+			assertTrue(
+					"Task 8: Make sure the `haswrite` user has the `resolution:write` authority",
+					authorities.contains(new SimpleGrantedAuthority("resolution:write")));
+			assertFalse(
+					"Task 8: Make sure the `haswrite` user doesn't not have the `resolution:read` authority",
+					authorities.contains(new SimpleGrantedAuthority("resolution:read")));
 		} catch (UsernameNotFoundException e) {
 			fail(
 					"Task 8: Make sure to add a user `haswrite` with an encoded password of `password`");

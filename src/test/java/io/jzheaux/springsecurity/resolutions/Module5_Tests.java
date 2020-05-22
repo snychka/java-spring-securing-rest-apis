@@ -7,20 +7,15 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
-import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -32,7 +27,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
-import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
@@ -63,7 +57,6 @@ import static org.junit.Assert.fail;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @RunWith(SpringRunner.class)
@@ -74,11 +67,13 @@ public class Module5_Tests {
     @Autowired
     MockMvc mvc;
 
+
     @Value("${spring.security.oauth2.resourceserver.opaquetoken.introspection-uri:#{null}}")
     String introspectionUrl;
 
     @Autowired(required = false)
     OpaqueTokenIntrospector introspector;
+
 
     @Autowired(required = false)
     UserDetailsService userDetailsService;
@@ -94,7 +89,9 @@ public class Module5_Tests {
 
     @Before
     public void setup() {
-        assertNotNull(this.userDetailsService);
+        assertNotNull(
+                "Module 1: Could not find `UserDetailsService` in the application context; make sure to complete the earlier modules " +
+                        "before starting this one", this.userDetailsService);
     }
 
     @TestConfiguration
@@ -111,11 +108,10 @@ public class Module5_Tests {
             this.server.stop();
         }
 
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
         @Bean
         JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
-            return jwt -> {
-                throw new BadJwtException("bad jwt");
-            };
+            return JwtDecoders.fromOidcIssuerLocation(this.server.issuer());
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
@@ -139,7 +135,7 @@ public class Module5_Tests {
         @Autowired
         AuthorizationServer authz;
 
-        @Autowired
+        @Autowired(required=false)
         void introspector(OpaqueTokenIntrospector introspector) throws Exception {
             NimbusOpaqueTokenIntrospector nimbus = null;
             if (introspector instanceof NimbusOpaqueTokenIntrospector) {

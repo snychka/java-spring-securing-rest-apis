@@ -3,12 +3,23 @@ package io.jzheaux.springsecurity.resolutions;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
+import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
@@ -48,7 +59,33 @@ public class Module3_Tests {
 
     @Before
     public void setup() {
-        assertNotNull(this.springSecurityFilterChain);
+        assertNotNull(
+                "Module 1: Could not find the Spring Security Filter Chain in the application context;" +
+                        "make sure that you complete the earlier modules before starting this one",
+                this.springSecurityFilterChain);
+    }
+
+    @TestConfiguration
+    static class TestConfig {
+
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
+        @Bean
+        JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
+            return NimbusJwtDecoder
+                    .withJwkSetUri(properties.getJwt().getIssuerUri() + "/protocol/openid-connect/certs")
+                    .build();
+        }
+
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+        @ConditionalOnMissingBean
+        @Bean
+        OpaqueTokenIntrospector introspector(OAuth2ResourceServerProperties properties) {
+            return new NimbusOpaqueTokenIntrospector(
+                    properties.getOpaquetoken().getIntrospectionUri(),
+                    properties.getOpaquetoken().getClientId(),
+                    properties.getOpaquetoken().getClientSecret());
+        }
+
     }
 
     @Test
