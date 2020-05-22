@@ -11,6 +11,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 import javax.sql.DataSource;
@@ -37,11 +39,13 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
-		http
-				.authorizeRequests(authz -> authz
-						.anyRequest().authenticated())
-				.httpBasic(basic -> {})
-				.cors(cors -> {});
+
+			http
+					.authorizeRequests(authz -> authz
+							.anyRequest().authenticated())
+					.httpBasic(basic -> {})
+					.oauth2ResourceServer(oauth2 -> oauth2.jwt())
+					.cors(cors -> {});
 		/*http.authorizeRequests(authz -> authz
 						.mvcMatchers(GET, "/resolutions", "/resolution/**").hasAuthority("resolution:read")
 						.anyRequest().hasAuthority("resolution:write"))
@@ -62,6 +66,15 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 						.allowedHeaders("Authorization");
 			}
 		};
+	}
+
+	@Bean
+	JwtAuthenticationConverter jwtAuthenticationConverter() {
+		JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
+		JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+		authoritiesConverter.setAuthorityPrefix("");
+		authenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+		return authenticationConverter;
 	}
 
 	@Bean

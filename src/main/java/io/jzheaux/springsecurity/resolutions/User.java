@@ -21,6 +21,9 @@ public class User implements Serializable {
     @Column
     String username;
 
+    @Column(name="full_name")
+    String fullName;
+
     @Column
     String password;
 
@@ -33,12 +36,12 @@ public class User implements Serializable {
     public Collection<UserAuthority> userAuthorities = new ArrayList<>();
 
 
-
     User() {}
 
     public User(User user) {
         this.id = user.id;
         this.username = user.username;
+        this.fullName = user.fullName;
         this.password = user.password;
         this.enabled = user.enabled;
         this.userAuthorities = user.userAuthorities;
@@ -96,6 +99,13 @@ public class User implements Serializable {
     }
 
 
+    public void setFullName(String u) {
+        this.fullName = u;
+    }
+
+    public String getFullName() {
+        return this.fullName;
+    }
 }
 
 /*
