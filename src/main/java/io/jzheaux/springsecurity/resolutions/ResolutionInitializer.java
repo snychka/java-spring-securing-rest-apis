@@ -25,21 +25,22 @@ public class ResolutionInitializer implements SmartInitializingSingleton {
 		this.resolutions.save(new Resolution("Free Solo the Eiffel Tower", "user"));
 		this.resolutions.save(new Resolution("Hang Christmas Lights", "user"));
 
-
-
 		User user = new User("user", "{bcrypt}$2a$10$3njzOWhsz20aimcpMamJhOnX9Pb4Nk3toq8OO0swIy5EPZnb1YyGe");
 		user.setFullName("User Userson");
 		user.grantAuthority("resolution:read");
+		user.grantAuthority("user:read");
 		this.users.save(user);
 
 		User hasRead = new User("hasread", "{bcrypt}$2a$10$3njzOWhsz20aimcpMamJhOnX9Pb4Nk3toq8OO0swIy5EPZnb1YyGe");
 		hasRead.setFullName("Reader Readson");
 		hasRead.grantAuthority("resolution:read");
+		hasRead.grantAuthority("user:read");
 		this.users.save(hasRead);
 
 		User hasWrite = new User("haswrite", "{bcrypt}$2a$10$3njzOWhsz20aimcpMamJhOnX9Pb4Nk3toq8OO0swIy5EPZnb1YyGe");
 		hasWrite.setFullName("Writer Writeson");
 		hasWrite.grantAuthority("resolution:write");
+		hasWrite.grantAuthority("user:read");
 		this.users.save(hasWrite);
 
 		User admin = new User("{bcrypt}$2a$10$bTu5ilpT4YILX8dOWM/05efJnoSlX4ElNnjhNopL9aPoRyUgvXAYa", "admin");
