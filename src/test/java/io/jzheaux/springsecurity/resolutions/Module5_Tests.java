@@ -316,16 +316,31 @@ public class Module5_Tests {
             SecurityContextHolder.clearContext();
         }
 
-        resolution = this.resolutionRepository.save(new Resolution("hasread's latest resolution", "hasread"));
+        resolution = this.resolutionRepository.save(new Resolution("user's latest resolution", "user"));
         token = new TestingAuthenticationToken
                 (haswrite, haswrite, AuthorityUtils.createAuthorityList("resolution:write", "resolution:share"));
         result = this.mvc.perform(put("/resolution/" + resolution.getId() + "/share")
                 .with(authentication(token))
                 .with(csrf()))
                 .andReturn();
+
         assertEquals(
                 "Task 5: A user with the `resolution:share` authority was able to share a resolution that wasn't theirs.",
                 403, result.getResponse().getStatus());
+
+        token = new TestingAuthenticationToken
+                (hasread, hasread, AuthorityUtils.createAuthorityList("resolution:read", "user:read"));
+        SecurityContextHolder.getContext().setAuthentication(token);
+        try {
+            Iterable<Resolution> resolutions = this.resolutionController.read();
+            for (Resolution hasReadResolutions : resolutions) {
+                assertNotEquals(
+                    "Task 5: A user with the `resolution:share` authority was able to share a resolution that wasn't theirs.",
+                    "user's latest resolution", hasReadResolutions.getText());
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
