@@ -1,5 +1,9 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,6 +45,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -107,6 +112,45 @@ public class Module4_Tests {
         assertNotNull(
                 "Module 1: Could not find `UserRepository<User, UUID>` in the application context; make sure to complete the earlier modules " +
                         "before starting this one", this.users);
+    }
+
+    @TestConfiguration
+    static class WebClientPostProcessor implements DisposableBean {
+        MockWebServer userEndpoint = new MockWebServer();
+
+        @Override
+        public void destroy() throws Exception {
+            this.userEndpoint.shutdown();
+        }
+
+        @Autowired(required = false)
+        void postProcess(WebClient.Builder web) throws Exception {
+            web.baseUrl(this.userEndpoint.url("").toString());
+        }
+
+        @Bean
+        MockWebServer userEndpoint() {
+            this.userEndpoint.setDispatcher(new Dispatcher() {
+                @Override
+                public MockResponse dispatch(RecordedRequest recordedRequest) {
+                    MockResponse response = new MockResponse().setResponseCode(200);
+                    String path = recordedRequest.getPath();
+                    switch(path) {
+                        case "/user/user/fullName":
+                            return response.setBody("User Userson");
+                        case "/user/hasread/fullName":
+                            return response.setBody("Has Read");
+                        case "/user/haswrite/fullName":
+                            return response.setBody("Has Write");
+                        case "/user/admin/fullName":
+                            return response.setBody("Admin Adminson");
+                        default:
+                            return response.setResponseCode(404);
+                    }
+                }
+            });
+            return this.userEndpoint;
+        }
     }
 
     @TestConfiguration
