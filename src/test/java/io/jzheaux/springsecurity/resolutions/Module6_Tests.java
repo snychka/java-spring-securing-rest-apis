@@ -239,6 +239,9 @@ public class Module6_Tests {
 	public void task_1() throws Exception {
 		// @Cross Origin without credentials
 		CrossOrigin crossOrigin = annotation(CrossOrigin.class, "read");
+		assertNotNull(
+				"Task 1: Make sure that there is a `@CrossOrigin` annotation on `ResolutionController#read`",
+				crossOrigin);
 		assertNotEquals(
 				"Task 1: Since you are using Bearer Token authentication now, `allowCredentials` should be removed",
 				"true", crossOrigin.allowCredentials());
