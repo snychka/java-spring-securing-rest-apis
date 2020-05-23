@@ -100,6 +100,50 @@ public class Module5_Tests {
     }
 
     @TestConfiguration
+    static class WebClientPostProcessor implements DisposableBean {
+        static String userBaseUrl;
+
+        MockWebServer userEndpoint = new MockWebServer();
+
+        @Override
+        public void destroy() throws Exception {
+            this.userEndpoint.shutdown();
+        }
+
+        @Autowired(required = false)
+        void postProcess(WebClient.Builder web) throws Exception {
+            Field field = web.getClass().getDeclaredField("baseUrl");
+            field.setAccessible(true);
+            userBaseUrl = (String) field.get(web);
+            web.baseUrl(this.userEndpoint.url("").toString());
+        }
+
+        @Bean
+        MockWebServer userEndpoint() {
+            this.userEndpoint.setDispatcher(new Dispatcher() {
+                @Override
+                public MockResponse dispatch(RecordedRequest recordedRequest) {
+                    MockResponse response = new MockResponse().setResponseCode(200);
+                    String path = recordedRequest.getPath();
+                    switch(path) {
+                        case "/user/user/fullName":
+                            return response.setBody("User Userson");
+                        case "/user/hasread/fullName":
+                            return response.setBody("Has Read");
+                        case "/user/haswrite/fullName":
+                            return response.setBody("Has Write");
+                        case "/user/admin/fullName":
+                            return response.setBody("Admin Adminson");
+                        default:
+                            return response.setResponseCode(404);
+                    }
+                }
+            });
+            return this.userEndpoint;
+        }
+    }
+
+    @TestConfiguration
     static class TestConfig implements DisposableBean, InitializingBean {
         AuthorizationServer server = new AuthorizationServer();
 
