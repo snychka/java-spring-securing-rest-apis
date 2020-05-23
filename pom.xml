@@ -18,6 +18,8 @@
 		<java.version>1.8</java.version>
 		<spring-security.version>5.4.0-M1</spring-security.version>
 		<hibernate.version>5.4.13.Final</hibernate.version>
+
+		<start-class>io.jzheaux.springsecurity.resolutions.ResolutionsApplication</start-class>
 	</properties>
 
 	<dependencies>
@@ -41,6 +43,15 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webflux</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty</artifactId>
 		</dependency>
 
 		<dependency>
