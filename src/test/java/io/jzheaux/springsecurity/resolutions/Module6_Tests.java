@@ -313,6 +313,9 @@ public class Module6_Tests {
 		filtersField.setAccessible(true);
 		List<ExchangeFilterFunction> filters = (List<ExchangeFilterFunction>)
 				filtersField.get(this.web);
+		if (filters == null) {
+			return null;
+		}
 		for (ExchangeFilterFunction filter : filters) {
 			if (filter instanceof ServletBearerExchangeFilterFunction) {
 				return (T) filter;
@@ -326,12 +329,17 @@ public class Module6_Tests {
 		task_3();
 		// update resolution controller
 
+		int count = this.userEndpoint.getRequestCount();
 		this.resolutions.save(new Resolution("my last resolution", "user"));
 		String token = this.authz.token("user", "resolution:read user:read");
 		Authentication authentication = getAuthentication(token);
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		try {
 			Iterable<Resolution> resolutions = this.resolutionController.read();
+			assertTrue(
+					"Task 4: It appears that `ResolutionController` is not calling `UserService`. " +
+							"Make sure to switch `UserRepository` with `UserService`",
+					this.userEndpoint.getRequestCount() > count);
 			for (Resolution resolution : resolutions) {
 				assertTrue(
 						"Task 4: The `/resolutions` endpoint didn't append the user's personal name in the reslution text.",
