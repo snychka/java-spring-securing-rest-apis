@@ -513,10 +513,10 @@ public class Module2_Tests {
 
 		Authentication admin = token("admin");
 		AccessDeniedException e = tryAuthorized(() -> {
-			List<String> resolutions = StreamSupport.stream(this.controller.read().spliterator(), false)
-					.map(Resolution::getText).collect(Collectors.toList());
-			List<String> all = StreamSupport.stream(this.repository.findAll().spliterator(), false)
-					.map(Resolution::getText).collect(Collectors.toList());
+			List<UUID> resolutions = StreamSupport.stream(this.controller.read().spliterator(), false)
+					.map(Resolution::getId).collect(Collectors.toList());
+			List<UUID> all = StreamSupport.stream(this.repository.findAll().spliterator(), false)
+					.map(Resolution::getId).collect(Collectors.toList());
 			assertEquals(
 					"Task 6: The admin user should receive all records back. Please double-check your `@PostFilter` expression that it allows all records if the user has the `ROLE_ADMIN` authority",
 					resolutions, all);

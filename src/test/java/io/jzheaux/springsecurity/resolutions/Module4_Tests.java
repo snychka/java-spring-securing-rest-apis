@@ -341,6 +341,7 @@ public class Module4_Tests {
         task_4();
         // conditionally send user's name in result, based on permission
 
+        ReflectedUser user = new ReflectedUser((User) this.userDetailsService.loadUserByUsername("hasread"));
         String token = this.authz.token("hasread", "resolution:read");
         Authentication authentication = getAuthentication(token);
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -350,7 +351,7 @@ public class Module4_Tests {
                 assertFalse(
                         "Task 5: The `/resolution` endpoint appended the user's personal name, even though that permission " +
                                 "was not granted to the client.",
-                        resolution.getText().endsWith("Has Read"));
+                        resolution.getText().endsWith(user.getFullName()));
             }
         } finally {
             SecurityContextHolder.clearContext();
