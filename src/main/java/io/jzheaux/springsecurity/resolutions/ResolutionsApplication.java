@@ -92,6 +92,7 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 		};
 	}
 
+	/*
 	@Bean
 	JwtAuthenticationConverter jwtAuthenticationConverter() {
 		JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
@@ -100,6 +101,8 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 		authenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 		return authenticationConverter;
 	}
+
+	 */
 
 
 
