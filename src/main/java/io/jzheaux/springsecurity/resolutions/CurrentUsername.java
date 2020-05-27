@@ -5,10 +5,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
 
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
+//@CurrentSecurityContext(expression="authentication.name")
 public @interface CurrentUsername {
 }
 
@@ -17,5 +19,6 @@ public @interface CurrentUsername {
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
 @AuthenticationPrincipal(expression="id")
+//@CurrentSecurityContext(expression="authentication.name")
 @interface CurrentUserId {
 }

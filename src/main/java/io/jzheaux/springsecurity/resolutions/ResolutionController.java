@@ -36,6 +36,8 @@ public class ResolutionController {
 			for (Resolution resolution : resolutions) {
 				String fullName = this.users.findByUsername(resolution.getOwner())
 						.map(User::getFullName).orElse("Anonymous");
+				//String fullName = this.users.findByUsername(resolution.getOwner())
+						//.map(User::getFullName).orElse("none");
 				resolution.setText(resolution.getText() + ", by " + fullName);
 			}
 		}
