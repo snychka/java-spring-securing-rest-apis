@@ -3,6 +3,7 @@ package io.jzheaux.springsecurity.resolutions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 
 
@@ -14,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
+import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 import javax.sql.DataSource;
@@ -52,9 +55,8 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 						.mvcMatchers(GET, "/resolutions", "/resolution/**").hasAuthority("resolution:read")
 						.anyRequest().hasAuthority("resolution:write"))
             	.httpBasic(basic -> {})
-				.oauth2ResourceServer(oauth2 -> oauth2
-						.jwt().jwtAuthenticationConverter(this.authenticationConverter)
-				)
+				//.oauth2ResourceServer(oauth2 -> oauth2.jwt().jwtAuthenticationConverter(this.authenticationConverter))
+				.oauth2ResourceServer(oauth2 -> oauth2.opaqueToken())
 				.cors(cors -> {});
 
 
@@ -90,6 +92,16 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 						.allowedHeaders("Authorization");
 			}
 		};
+	}
+
+	@Bean
+	public OpaqueTokenIntrospector introspector(
+			UserRepository users, OAuth2ResourceServerProperties properties) {
+		OpaqueTokenIntrospector introspector = new NimbusOpaqueTokenIntrospector(
+				properties.getOpaquetoken().getIntrospectionUri(),
+				properties.getOpaquetoken().getClientId(),
+				properties.getOpaquetoken().getClientSecret());
+		return new UserRepositoryOpaqueTokenIntrospector(users, introspector);
 	}
 
 	/*
