@@ -1,148 +1,3 @@
-
-package io.jzheaux.springsecurity.resolutions;
-
-import java.io.Serializable;
-import javax.persistence.*;
-import java.util.UUID;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.ArrayList;
-import javax.persistence.CascadeType;
-import javax.persistence.FetchType;
-import javax.persistence.OneToMany;
-
-@Entity(name="users")
-public class User implements Serializable {
-
-    @Id
-    UUID id;
-
-    @Column
-    String username;
-
-    @Column(name="full_name")
-    String fullName;
-
-    @Column
-    String password;
-
-    // STEFAN: needed to make public
-    @Column
-    public boolean enabled = true;
-
-    // STEFAN: needed to make public
-    @OneToMany(fetch=FetchType.EAGER, cascade=CascadeType.ALL)
-    public Collection<UserAuthority> userAuthorities = new ArrayList<>();
-
-
-
-    @Column
-    String subscription;
-
-    public String getSubscription() {
-        return subscription;
-    }
-
-    public void setSubscription(String subscription) {
-        this.subscription = subscription;
-    }
-
-
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    Collection<User> friends = new ArrayList<>();
-
-
-    public Collection<User> getFriends() {
-        return friends;
-    }
-
-    public void setFriends(Collection<User> friends) {
-        this.friends = friends;
-    }
-
-
-    User() {}
-
-
-
-    public User(User user) {
-        this.id = user.id;
-        this.username = user.username;
-        this.fullName = user.fullName;
-        this.password = user.password;
-        this.enabled = user.enabled;
-        this.userAuthorities = user.userAuthorities;
-        this.subscription = user.subscription;
-        this.friends = user.friends;
-    }
-
-    public User(String username, String password) {
-        this.id = UUID.randomUUID();
-        this.username = username;
-        this.password = password;
-    }
-
-    public Collection<UserAuthority> getUserAuthorities() {
-        return Collections.unmodifiableCollection(this.userAuthorities);
-    }
-
-    public void grantAuthority(String authority) {
-        UserAuthority userAuthority = new UserAuthority(this, authority);
-        this.userAuthorities.add(userAuthority);
-        /*UserAuthority userAuthority = new UserAuthority();
-        userAuthority.setUser(this);
-        userAuthority.setAuthority(authority);
-        this.userAuthorities.add(userAuthority);
-
-         */
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    // STEFAN: needed to create
-    public String getPassword() {
-        return this.password;
-    }
-
-    // STEFAN: needed to create
-    public String getUsername() {
-        return this.username;
-    }
-
-    // STEFAN: needed to create
-    public boolean isEnabled() {
-        return this.enabled;
-    }
-
-
-
-    public UUID getId() {
-        return id;
-    }
-
-
-    public void setFullName(String u) {
-        this.fullName = u;
-    }
-
-    public String getFullName() {
-        return this.fullName;
-    }
-
-    public void addFriend(User u) {
-        this.friends.add(u);
-    }
-}
-
-/*
 package io.jzheaux.springsecurity.resolutions;
 
 import javax.persistence.CascadeType;
@@ -158,76 +13,74 @@ import java.util.UUID;
 
 @Entity(name="users")
 public class User implements Serializable {
-    @Id
-    UUID id;
+	@Id
+	UUID id;
 
-    @Column(name="username")
-    String username;
+	@Column(name="username")
+	String username;
 
-    @Column
-    String password;
+	@Column
+	String password;
 
-    @Column
-    boolean enabled = true;
+	@Column
+	boolean enabled = true;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    Collection<UserAuthority> userAuthorities = new ArrayList<>();
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	Collection<UserAuthority> userAuthorities = new ArrayList<>();
 
-    User() {}
+	User() {}
 
-    User(String username, String password) {
-        this.id = UUID.randomUUID();
-        this.username = username;
-        this.password = password;
-    }
+	User(String username, String password) {
+		this.id = UUID.randomUUID();
+		this.username = username;
+		this.password = password;
+	}
 
-    User(User user) {
-        this.id = user.id;
-        this.username = user.username;
-        this.password = user.password;
-        this.enabled = user.enabled;
-        this.userAuthorities = user.userAuthorities;
-    }
+	User(User user) {
+		this.id = user.id;
+		this.username = user.username;
+		this.password = user.password;
+		this.enabled = user.enabled;
+		this.userAuthorities = user.userAuthorities;
+	}
 
-    public UUID getId() {
-        return id;
-    }
+	public UUID getId() {
+		return id;
+	}
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+	public void setId(UUID id) {
+		this.id = id;
+	}
 
-    public String getUsername() {
-        return username;
-    }
+	public String getUsername() {
+		return username;
+	}
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+	public void setUsername(String username) {
+		this.username = username;
+	}
 
-    public String getPassword() {
-        return password;
-    }
+	public String getPassword() {
+		return password;
+	}
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+	public void setPassword(String password) {
+		this.password = password;
+	}
 
-    public boolean isEnabled() {
-        return enabled;
-    }
+	public boolean isEnabled() {
+		return enabled;
+	}
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
 
-    public Collection<UserAuthority> getUserAuthorities() {
-        return userAuthorities;
-    }
+	public Collection<UserAuthority> getUserAuthorities() {
+		return userAuthorities;
+	}
 
-    public void grantAuthority(String authority) {
-        this.userAuthorities.add(new UserAuthority(this, authority));
-    }
+	public void grantAuthority(String authority) {
+		this.userAuthorities.add(new UserAuthority(this, authority));
+	}
 }
-
- */
