@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -56,6 +57,12 @@ public class Module3_Tests {
 
     @Autowired(required = false)
     CorsConfigurationSource cors;
+
+    @Autowired(required = false)
+    Jwt jwt;
+
+    @Autowired(required = false)
+    OpaqueTokenIntrospector introspector;
 
     @Before
     public void setup() {
@@ -173,10 +180,12 @@ public class Module3_Tests {
         task_3();
 
         CrossOrigin crossOrigin = annotation(CrossOrigin.class, "read");
-        assertEquals(
-                "Task 4: So that HTTP Basic works in the browser for this request, set the `allowCredentials` property on the `@CrossOrigin` annotation to `\"true\"`",
-                "true", crossOrigin.allowCredentials()
-        );
+        if (this.jwt == null && this.introspector == null) { // Compatibility with Module 6, which shuts this field off
+            assertEquals(
+                    "Task 4: So that HTTP Basic works in the browser for this request, set the `allowCredentials` property on the `@CrossOrigin` annotation to `\"true\"`",
+                    "true", crossOrigin.allowCredentials()
+            );
+        }
 
         MvcResult result = this.mvc.perform(options("/resolutions")
                 .header("Access-Control-Request-Method", "GET")
@@ -184,9 +193,11 @@ public class Module3_Tests {
                 .header("Origin", "http://localhost:4000"))
                 .andReturn();
 
-        assertEquals(
-                "Task 4: Tried to do an `OPTIONS` pre-flight request from `http://localhost:4000` for `GET /resolutions` failed.",
-                "true", result.getResponse().getHeader("Access-Control-Allow-Credentials"));
+        if (this.jwt == null && this.introspector == null) { // Compatibility with Module 6, which shuts this field off
+            assertEquals(
+                    "Task 4: Tried to do an `OPTIONS` pre-flight request from `http://localhost:4000` for `GET /resolutions` failed.",
+                    "true", result.getResponse().getHeader("Access-Control-Allow-Credentials"));
+        }
 
         result = this.mvc.perform(options("/" + UUID.randomUUID())
                 .header("Access-Control-Request-Method", "HEAD")
@@ -194,10 +205,12 @@ public class Module3_Tests {
                 .header("Origin", "http://localhost:4000"))
                 .andReturn();
 
-        assertNotEquals(
-                "Task 4: Tried to do an `OPTIONS` pre-flight request for a random endpoint, asking to send credentials, and it succeeded. " +
-                "Make sure that you haven't allowed credentials globally.",
-                "true", result.getResponse().getHeader("Access-Control-Allow-Credentials"));
+        if (this.jwt == null && this.introspector == null) { // Compatibility with Module 6, which shuts this field off
+            assertNotEquals(
+                    "Task 4: Tried to do an `OPTIONS` pre-flight request for a random endpoint, asking to send credentials, and it succeeded. " +
+                            "Make sure that you haven't allowed credentials globally.",
+                    "true", result.getResponse().getHeader("Access-Control-Allow-Credentials"));
+        }
     }
 
     private <T extends Filter> T getFilter(Class<T> filterClass) {

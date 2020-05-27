@@ -1,8 +1,14 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -36,8 +42,10 @@ import org.springframework.security.oauth2.server.resource.introspection.OpaqueT
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Ref;
@@ -92,6 +100,45 @@ public class Module2_Tests {
 	Authentication haswrite;
 	Resolution hasreadResolution;
 	Resolution haswriteResolution;
+
+	@TestConfiguration
+	static class WebClientPostProcessor implements DisposableBean {
+		MockWebServer userEndpoint = new MockWebServer();
+
+		@Override
+		public void destroy() throws Exception {
+			this.userEndpoint.shutdown();
+		}
+
+		@Autowired(required = false)
+		void postProcess(WebClient.Builder web) throws Exception {
+			web.baseUrl(this.userEndpoint.url("").toString());
+		}
+
+		@Bean
+		MockWebServer userEndpoint() {
+			this.userEndpoint.setDispatcher(new Dispatcher() {
+				@Override
+				public MockResponse dispatch(RecordedRequest recordedRequest) {
+					MockResponse response = new MockResponse().setResponseCode(200);
+					String path = recordedRequest.getPath();
+					switch(path) {
+						case "/user/user/fullName":
+							return response.setBody("User Userson");
+						case "/user/hasread/fullName":
+							return response.setBody("Has Read");
+						case "/user/haswrite/fullName":
+							return response.setBody("Has Write");
+						case "/user/admin/fullName":
+							return response.setBody("Admin Adminson");
+						default:
+							return response.setResponseCode(404);
+					}
+				}
+			});
+			return this.userEndpoint;
+		}
+	}
 
 	@TestConfiguration
 	static class TestConfig {
@@ -466,10 +513,10 @@ public class Module2_Tests {
 
 		Authentication admin = token("admin");
 		AccessDeniedException e = tryAuthorized(() -> {
-			List<String> resolutions = StreamSupport.stream(this.controller.read().spliterator(), false)
-					.map(Resolution::getText).collect(Collectors.toList());
-			List<String> all = StreamSupport.stream(this.repository.findAll().spliterator(), false)
-					.map(Resolution::getText).collect(Collectors.toList());
+			List<UUID> resolutions = StreamSupport.stream(this.controller.read().spliterator(), false)
+					.map(Resolution::getId).collect(Collectors.toList());
+			List<UUID> all = StreamSupport.stream(this.repository.findAll().spliterator(), false)
+					.map(Resolution::getId).collect(Collectors.toList());
 			assertEquals(
 					"Task 6: The admin user should receive all records back. Please double-check your `@PostFilter` expression that it allows all records if the user has the `ROLE_ADMIN` authority",
 					resolutions, all);

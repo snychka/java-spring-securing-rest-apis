@@ -1,7 +1,12 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,6 +39,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
@@ -82,6 +88,45 @@ public class Module1_Tests {
 
 	@Autowired
 	ResolutionController resolutionController;
+
+	@TestConfiguration
+	static class WebClientPostProcessor implements DisposableBean {
+		MockWebServer userEndpoint = new MockWebServer();
+
+		@Override
+		public void destroy() throws Exception {
+			this.userEndpoint.shutdown();
+		}
+
+		@Autowired(required = false)
+		void postProcess(WebClient.Builder web) throws Exception {
+			web.baseUrl(this.userEndpoint.url("").toString());
+		}
+
+		@Bean
+		MockWebServer userEndpoint() {
+			this.userEndpoint.setDispatcher(new Dispatcher() {
+				@Override
+				public MockResponse dispatch(RecordedRequest recordedRequest) {
+					MockResponse response = new MockResponse().setResponseCode(200);
+					String path = recordedRequest.getPath();
+					switch(path) {
+						case "/user/user/fullName":
+							return response.setBody("User Userson");
+						case "/user/hasread/fullName":
+							return response.setBody("Has Read");
+						case "/user/haswrite/fullName":
+							return response.setBody("Has Write");
+						case "/user/admin/fullName":
+							return response.setBody("Admin Adminson");
+						default:
+							return response.setResponseCode(404);
+					}
+				}
+			});
+			return this.userEndpoint;
+		}
+	}
 
 	@TestConfiguration
 	static class TestConfig {

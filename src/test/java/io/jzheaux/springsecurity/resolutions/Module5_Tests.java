@@ -1,5 +1,9 @@
 package io.jzheaux.springsecurity.resolutions;
 
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,6 +40,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -92,6 +97,50 @@ public class Module5_Tests {
         assertNotNull(
                 "Module 1: Could not find `UserDetailsService` in the application context; make sure to complete the earlier modules " +
                         "before starting this one", this.userDetailsService);
+    }
+
+    @TestConfiguration
+    static class WebClientPostProcessor implements DisposableBean {
+        static String userBaseUrl;
+
+        MockWebServer userEndpoint = new MockWebServer();
+
+        @Override
+        public void destroy() throws Exception {
+            this.userEndpoint.shutdown();
+        }
+
+        @Autowired(required = false)
+        void postProcess(WebClient.Builder web) throws Exception {
+            Field field = web.getClass().getDeclaredField("baseUrl");
+            field.setAccessible(true);
+            userBaseUrl = (String) field.get(web);
+            web.baseUrl(this.userEndpoint.url("").toString());
+        }
+
+        @Bean
+        MockWebServer userEndpoint() {
+            this.userEndpoint.setDispatcher(new Dispatcher() {
+                @Override
+                public MockResponse dispatch(RecordedRequest recordedRequest) {
+                    MockResponse response = new MockResponse().setResponseCode(200);
+                    String path = recordedRequest.getPath();
+                    switch(path) {
+                        case "/user/user/fullName":
+                            return response.setBody("User Userson");
+                        case "/user/hasread/fullName":
+                            return response.setBody("Has Read");
+                        case "/user/haswrite/fullName":
+                            return response.setBody("Has Write");
+                        case "/user/admin/fullName":
+                            return response.setBody("Admin Adminson");
+                        default:
+                            return response.setResponseCode(404);
+                    }
+                }
+            });
+            return this.userEndpoint;
+        }
     }
 
     @TestConfiguration
@@ -311,16 +360,31 @@ public class Module5_Tests {
             SecurityContextHolder.clearContext();
         }
 
-        resolution = this.resolutionRepository.save(new Resolution("hasread's latest resolution", "hasread"));
+        resolution = this.resolutionRepository.save(new Resolution("user's latest resolution", "user"));
         token = new TestingAuthenticationToken
                 (haswrite, haswrite, AuthorityUtils.createAuthorityList("resolution:write", "resolution:share"));
         result = this.mvc.perform(put("/resolution/" + resolution.getId() + "/share")
                 .with(authentication(token))
                 .with(csrf()))
                 .andReturn();
+
         assertEquals(
                 "Task 5: A user with the `resolution:share` authority was able to share a resolution that wasn't theirs.",
                 403, result.getResponse().getStatus());
+
+        token = new TestingAuthenticationToken
+                (hasread, hasread, AuthorityUtils.createAuthorityList("resolution:read", "user:read"));
+        SecurityContextHolder.getContext().setAuthentication(token);
+        try {
+            Iterable<Resolution> resolutions = this.resolutionController.read();
+            for (Resolution hasReadResolutions : resolutions) {
+                assertNotEquals(
+                    "Task 5: A user with the `resolution:share` authority was able to share a resolution that wasn't theirs.",
+                    "user's latest resolution", hasReadResolutions.getText());
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
