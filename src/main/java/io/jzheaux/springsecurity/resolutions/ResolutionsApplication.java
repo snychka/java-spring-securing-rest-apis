@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
+import org.springframework.security.oauth2.server.resource.web.reactive.function.client.ServletBearerExchangeFilterFunction;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 import javax.sql.DataSource;
@@ -30,6 +31,7 @@ import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import static org.springframework.http.HttpMethod.GET;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -93,6 +95,12 @@ public class ResolutionsApplication extends WebSecurityConfigurerAdapter {
 			}
 		};
 	}
+
+	@Bean
+	public WebClient.Builder web() {
+		return WebClient.builder()
+				.baseUrl("http://localhost:8081")
+				.filter(new ServletBearerExchangeFilterFunction());	}
 
 	@Bean
 	public OpaqueTokenIntrospector introspector(
