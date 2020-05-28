@@ -16,11 +16,11 @@ USER projects
 
 COPY --chown=projects:projects ./pom.xml .
 
+COPY --chown=projects:projects . .
+
 RUN ["mvn", "clean"]
 
-RUN ["mvn", "de.qaware.maven:go-offline-maven-plugin:resolve-dependencies"]
-
-COPY --chown=projects:projects . .
+RUN ["mvn", "de.qaware.maven:go-offline-maven-plugin:resolve-dependencies", "test", "-Dmaven.test.failure.ignore"]
 
 RUN ["mvn", "clean"]
 

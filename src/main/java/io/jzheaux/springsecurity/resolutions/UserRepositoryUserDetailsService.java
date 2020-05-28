@@ -5,13 +5,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Component
 public class UserRepositoryUserDetailsService implements UserDetailsService {
 	private final UserRepository users;
 
@@ -21,14 +18,13 @@ public class UserRepositoryUserDetailsService implements UserDetailsService {
 
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		Optional<User> user = this.users.findByUsername(username);
-		return user
-				.map(UserBridge::new)
+		return this.users.findByUsername(username)
+				.map(BridgedUser::new)
 				.orElseThrow(() -> new UsernameNotFoundException("no user"));
 	}
 
-	private static class UserBridge extends User implements UserDetails {
-		public UserBridge(User user) {
+	private static class BridgedUser extends User implements UserDetails {
+		public BridgedUser(User user) {
 			super(user);
 		}
 
@@ -40,23 +36,18 @@ public class UserRepositoryUserDetailsService implements UserDetailsService {
 		}
 
 		@Override
-		public String getUsername() {
-			return this.username;
-		}
-
-		@Override
 		public boolean isAccountNonExpired() {
-			return true;
+			return this.enabled;
 		}
 
 		@Override
 		public boolean isAccountNonLocked() {
-			return true;
+			return this.enabled;
 		}
 
 		@Override
 		public boolean isCredentialsNonExpired() {
-			return true;
+			return this.enabled;
 		}
 	}
 }
