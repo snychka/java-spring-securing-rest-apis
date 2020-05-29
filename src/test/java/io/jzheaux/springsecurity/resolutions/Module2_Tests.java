@@ -29,12 +29,14 @@ import org.springframework.security.access.prepost.PostFilter;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PrePostAnnotationSecurityMetadataSource;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.config.annotation.authentication.configuration.EnableGlobalAuthentication;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
@@ -143,11 +145,20 @@ public class Module2_Tests {
 	@TestConfiguration
 	static class TestConfig {
 
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
 		@Bean
 		JwtDecoder jwtDecoder() {
 			return NimbusJwtDecoder
 					.withJwkSetUri("https://idp.example.org/jwks")
 					.build();
+		}
+
+		@ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+		@Bean
+		JwtDecoder interrim() {
+			return token -> {
+				throw new BadJwtException("bad jwt");
+			};
 		}
 
 		@ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")

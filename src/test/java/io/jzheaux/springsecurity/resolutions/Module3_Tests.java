@@ -15,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.config.annotation.authentication.configuration.EnableGlobalAuthentication;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -75,11 +77,20 @@ public class Module3_Tests {
     @TestConfiguration
     static class TestConfig {
 
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
         @Bean
         JwtDecoder jwtDecoder() {
             return NimbusJwtDecoder
                     .withJwkSetUri("https://idp.example.org/jwks")
                     .build();
+        }
+
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+        @Bean
+        JwtDecoder interrim() {
+            return token -> {
+                throw new BadJwtException("bad jwt");
+            };
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
