@@ -1,4 +1,4 @@
-# Module One
+# Authenticating Requests with HTTP Basic
 
 In this module, you'll add HTTP Basic authentication that's connected to a local database.
 

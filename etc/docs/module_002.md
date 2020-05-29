@@ -1,4 +1,4 @@
-# Module Two
+# Authorizing Requests with HTTP Basic
 
 In this module, you'll add method-based authorization rules to your REST API.
 
