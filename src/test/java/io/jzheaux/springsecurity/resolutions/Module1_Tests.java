@@ -31,6 +31,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -131,11 +132,10 @@ public class Module1_Tests {
 	@TestConfiguration
 	static class TestConfig {
 
-		@ConditionalOnProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri")
 		@Bean
-		JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
+		JwtDecoder jwtDecoder() {
 			return NimbusJwtDecoder
-					.withJwkSetUri(properties.getJwt().getIssuerUri() + "/protocol/openid-connect/certs")
+					.withJwkSetUri("https://idp.example.org/jwks")
 					.build();
 		}
 

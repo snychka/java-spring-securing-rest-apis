@@ -174,6 +174,12 @@ public class Module4_Tests {
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+        @Bean
+        JwtDecoder interrim() {
+            return JwtDecoders.fromOidcIssuerLocation(this.server.issuer());
+        }
+
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
         @ConditionalOnMissingBean
         @Bean
         OpaqueTokenIntrospector introspector(OAuth2ResourceServerProperties properties) {
@@ -245,18 +251,16 @@ public class Module4_Tests {
         assertTrue("Task 1: Could not find a bean in the application context that will verify the bearer token. " +
                 "Make sure that you are specifying the correct property in `application.yml`", this.jwt != null || this.introspector != null);
 
-        if (this.jwt != null) {
-            String issuerUri = "http://localhost:9999/auth/realms/one";
-            assertEquals(
-                    "Task 1: Make sure that the `issuer-uri` property is set to `" + issuerUri + "`",
-                    issuerUri, this.issuerUri);
-        }
-
         if (this.introspector != null) {
             String introspectionUrl = "http://localhost:9999/auth/realms/one/protocol/openid-connect/token/introspect";
             assertEquals(
                     "Task 1: Make sure that the `introspection-uri` property is set to `" + introspectionUrl + "`",
                     introspectionUrl, this.introspectionUrl);
+        } else {
+            String issuerUri = "http://localhost:9999/auth/realms/one";
+            assertEquals(
+                    "Task 1: Make sure that the `issuer-uri` property is set to `" + issuerUri + "`",
+                    issuerUri, this.issuerUri);
         }
     }
 

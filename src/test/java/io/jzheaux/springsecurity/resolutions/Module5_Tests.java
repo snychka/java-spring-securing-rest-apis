@@ -31,6 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.server.resource.introspection.NimbusOpaqueTokenIntrospector;
@@ -161,6 +162,14 @@ public class Module5_Tests {
         @Bean
         JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
             return JwtDecoders.fromOidcIssuerLocation(this.server.issuer());
+        }
+
+        @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
+        @Bean
+        JwtDecoder interrim() {
+            return token -> {
+                throw new BadJwtException("bad jwt");
+            };
         }
 
         @ConditionalOnProperty("spring.security.oauth2.resourceserver.opaquetoken.introspection-uri")
