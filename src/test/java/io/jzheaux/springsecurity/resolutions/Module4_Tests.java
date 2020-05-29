@@ -378,7 +378,8 @@ public class Module4_Tests {
             getAuthentication(token);
             fail(
                     "Task 6: Create a custom `Converter<Jwt, AbstractAuthenticationToken>` that reconciles the `sub` field in the `Jwt` " +
-                            "with what's in the `UserRepository`. If the user isn't there, throw a `UsernameNotFoundException`.");
+                            "with what's in the `UserRepository`. If the user isn't there, throw a `UsernameNotFoundException`. " +
+                            "Also, make sure that you've removed the `JwtAuthenticationConverter` `@Bean` definition since this custom one you are writing replaces that.");
         } catch (UsernameNotFoundException expected) {
             // ignore
         }
